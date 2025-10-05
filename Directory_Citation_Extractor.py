@@ -51,7 +51,8 @@ def process_folder():
     xml_files = [
         os.path.join(folder_path, f) 
         for f in os.listdir(folder_path) 
-        if f.endswith('.xml') and os.path.isfile(os.path.join(folder_path, f))
+        # Check if the filename, converted to lowercase, ends with '.xml'
+        if f.lower().endswith('.xml') and os.path.isfile(os.path.join(folder_path, f))
     ]
 
     if not xml_files:
