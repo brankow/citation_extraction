@@ -59,6 +59,10 @@ def process_folder():
         return
 
     total_files = len(xml_files)
+
+    # --- BATCH DURATION START ---
+    batch_start_time = time.time()
+    # ----------------------------
     
     for i, file_path in enumerate(xml_files):
         print(f"\n--- [FILE {i + 1}/{total_files}] Starting processing: {os.path.basename(file_path)} ---")
@@ -70,7 +74,13 @@ def process_folder():
         
         print(f"--- [FILE {i + 1}/{total_files}] Finished in {end_time - start_time:.2f} seconds. ---")
         
+    # --- BATCH DURATION END ---
+    batch_end_time = time.time()
+    total_duration = batch_end_time - batch_start_time
+    # --------------------------
+
     print(f"\n✅ Batch processing complete. Total files processed: {total_files}")
+    print(f"⏱️ Total processing time for directory: {total_duration:.2f} seconds.")
 
 
 if __name__ == "__main__":
