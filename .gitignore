@@ -1,0 +1,18 @@
+# Bytecode
+__pycache__/
+*.pyc
+
+# OS/Editor Files
+.DS_Store
+.vscode/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Testing/Debugging
+.pytest_cache/
+
+# Output Files
+*.xml # Only ignore output XMLs, not source.
