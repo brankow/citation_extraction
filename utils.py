@@ -28,21 +28,38 @@ def select_xml_file():
     root.destroy()
     return file_path
 
+def select_xml_folder():
+    """
+    Opens a file dialog using tkinter to allow the user to select a folder.
+    """
+    root = tk.Tk()
+    root.withdraw()
+    
+    # Use askdirectory instead of askopenfilename
+    folder_path = filedialog.askdirectory(
+        title="Select a Folder Containing XML Documents"
+    )
+
+    root.destroy()
+    return folder_path
 
 def extract_paragraph_texts(p_element, xml_tags_regex):
     """
     Extracts the raw XML content and the plain text version from an XML element.
     """
+
+    raw_content_with_tags = ""
+    stripped_text = ""
     try:
         # Get full XML string of the inner content
-        full_xml_string = ET.tostring(p_element, encoding='utf-8').decode('utf-8')
+        full_xml_string = ET.tostring(p_element, encoding='utf-8').decode('utf-8', errors='ignore')
         
         # Strip the outer <p> tag using ElementTree's representation
         start_index = full_xml_string.find('>') + 1
         end_index = full_xml_string.rfind('</p>')
         
         if start_index > 0 and end_index != -1 and end_index > start_index:
-            raw_content_with_tags = full_xml_string[start_index:end_index].strip()
+            raw_content_with_tags = full_xml_string[start_index:end_index]
         else:
             raw_content_with_tags = ""
 
@@ -51,6 +68,7 @@ def extract_paragraph_texts(p_element, xml_tags_regex):
         
         return raw_content_with_tags, stripped_text
 
-    except Exception:
+    except Exception as e:
+        print(f"DEBUG: Error during text extraction: {e}")
         # Handle cases where ET.tostring might fail unexpectedly
         return "[Error extracting content or paragraph is malformed]", ""
