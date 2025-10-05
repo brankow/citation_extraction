@@ -189,10 +189,25 @@ def extract_paragraphs(file_path):
         # 6. Save the catalog to a new file
         if catalog.get_all_citations():
             catalog.print_summary()
+
+            output_dir = "Output"
+
+            # 1. Ensure the output directory exists
+            # os.makedirs creates the directory, or does nothing if it already exists (exist_ok=True)
+            try:
+                os.makedirs(output_dir, exist_ok=True)
+            except OSError as e:
+                print(f"Error creating output directory '{output_dir}': {e}")
+                return # Stop processing if we can't create the directory
             
-            # FIX: Generate the new filepath
+            # 2. Generate the filename based on the original file
+            # Get just the filename (e.g., 'document.xml')
+            filename = os.path.basename(file_path)
             base, ext = os.path.splitext(file_path)
-            new_file_path = f"{base}_citations{ext}"
+            
+            # Construct the final path: 'Output/document_citations.xml'
+            new_filename = f"{base}_citations{ext}"
+            new_file_path = os.path.join(output_dir, new_filename)
             
             catalog.save_to_file(new_file_path)
         else:
