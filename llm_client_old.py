@@ -198,6 +198,8 @@ def extract_standard_references(paragraph_text, _3gpp_standards, _ieee_standards
     - "accession_number": the alphanumeric code uniquely identifying the standard (e.g., "TS 23.501", "802.11be")
     - "title": a short descriptive text following or associated with the standard (if present, else "")
     - "version": the version or edition of the standard (if present, else "")
+    - "publication_date": the publication year or full date (if present, else "")
+    - "url": a link to the standard document or homepage (if present, else ""
 
     RULES:
     - If no references are found, return a JSON object with an empty "references" array.

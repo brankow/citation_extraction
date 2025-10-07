@@ -41,10 +41,12 @@ STANDARDS_REFERENCES_SCHEMA = {
                         "description": "The name of the standards organization.",
                         "enum": ["3GPP", "IEEE", "ISO", "W3C"]
                     },
+                    "publication_date": { "type": "string" },
                     "accession_number": { "type": "string" },
-                    "version": { "type": "string" }
+                    "version": { "type": "string" },
+                    "url": { "type": "string" }
                 },
-                "required": ["title", "standardisation_body", "accession_number", "version"],
+                "required": ["title", "standardisation_body", "publication_date", "accession_number", "version", "url"],
                 "additionalProperties": False
             }
         }
