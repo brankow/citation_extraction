@@ -2,15 +2,17 @@ def correct_npl_mistakes(reference):
     """
     Applies heuristics to fix common LLM extraction errors.
 
-    The primary heuristic: If the 'title' is very short (e.g., < 4 words)
-    AND the 'publisher' (serial title) is missing, we assume the short title
-    is actually the publisher/journal name and swap them.
-    Corrects improperly formatted DOI URLs (e.g., DOI:10... to https://doi.org/10...).    """
+    Includes:
+    1. Title/Publisher swap heuristic.
+    2. Corrects improperly formatted DOI URLs (e.g., DOI:10... to https://doi.org/10...).
+    3. Completes bare DOI strings (e.g., 10.1016/... to https://doi.org/10.1016/...).
+    """
     corrected = False
+
+
+    # --- Heuristic 1: Title/Publisher Swap ---
     title = reference.get("title", "").strip()
     publisher = reference.get("publisher", "").strip()
-
-    # Heuristic 1: Short 'title' that looks like a journal/publisher, but 'publisher' is empty.
     title_word_count = len(title.split())
     
     if title_word_count > 0 and title_word_count < 4 and not publisher:
@@ -24,23 +26,30 @@ def correct_npl_mistakes(reference):
             
             print(f"  ~ CORRECTION: Swapped short title ('{title}') to publisher field.")
             corrected = True
-    # --- Heuristic 2: DOI URL Correction ---
+    # --- Heuristic 2 & 3: DOI URL Correction/Completion ---
     url = reference.get("url", "").strip()
     
-    # Check for 'doi:' or 'DOI:' prefixes in the URL field (case-insensitive)
-    if url.lower().startswith("doi:"):
+    if url:
+        original_url = url
         
-        # 1. Remove the 'doi:' prefix (case-insensitive, 4 characters)
-        # We ensure to strip any leading/trailing whitespace after removing the prefix
-        doi_path = url[4:].strip()
-        
-        # 2. Construct the correct full DOI URL
-        corrected_url = f"https://doi.org/{doi_path}"
-        
-        # 3. Update the reference data
-        reference["url"] = corrected_url
-        
-        print(f"  ~ CORRECTION: Fixed DOI URL: '{url}' -> '{corrected_url}'")
-        corrected = True
+        # 2. Correction: Fix 'doi:' or 'DOI:' prefix
+        if url.lower().startswith("doi:"):
+            # Remove 'doi:' (4 characters) and standardize
+            doi_path = url[4:].strip()
+            url = f"https://doi.org/{doi_path}"
+            corrected = True
+            
+        # 3. Completion: Handle bare DOI strings (e.g., '10.1016/...')
+        # Check if it starts with the standard DOI directory pattern ('10.') 
+        # AND it hasn't been recognized as a standard URL or fixed in step 2.
+        elif url.startswith("10.") and not url.lower().startswith("http"):
+            url = f"https://doi.org/{url}"
+            corrected = True
+            
+        # Apply the final corrected URL to the reference if a correction occurred
+        if corrected:
+            reference["url"] = url
+            if original_url != url:
+                print(f"  ~ CORRECTION: Fixed DOI URL: '{original_url}' -> '{url}'")
 
-    return corrected # Returns True if any correction was made  
+    return corrected
