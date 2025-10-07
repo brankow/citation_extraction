@@ -180,7 +180,7 @@ class CitationCatalog:
                 self._build_online_xml(nplcit, citation)
             elif citation["citation_type"] == "cas_number": # Special handler for CAS
                 self._build_cas_xml(nplcit, citation)
-            elif citation["citation_type"] == "standard":
+            elif citation["citation_type"] == "standard_article":
                 self._build_standard_xml(nplcit, citation)
         
         return root
