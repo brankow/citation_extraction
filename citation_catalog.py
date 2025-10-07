@@ -72,9 +72,21 @@ class CitationCatalog:
     
     def add_accession(self, accession_data, paragraph_num, crossref_id=None):
         """
-        Add a biological accession ID to the catalog.
+        Add a biological accession ID or a CAS number to the catalog.
         Maps from LLM schema to unified format.
         """
+
+        accession_type = accession_data.get("type", "").upper()
+        
+        # Determine npl-type and citation_type based on 'type'
+        if accession_type == "CAS":
+            # CAS mapping: npl-type='s' and uses article structure with <ino>
+            npl_type = "s"
+            citation_type = "cas_number" # Special type for internal handling
+        else:
+            # All other genes/proteins (e.g., Uniprot): npl-type='e' and uses online structure
+            npl_type = "e"
+            citation_type = "online"
         
         # 1. Capture the current sequential number
         current_seq_num = self._npl_counter
@@ -88,14 +100,23 @@ class CitationCatalog:
         
         unified_citation = {
             "id": citation_id,
-            "npl_type": "e",  # 'e' for electronic/online
+            "npl_type": npl_type,
             "crossrefid": crossref_id or default_crossref_id, 
             "paragraph_num": paragraph_num,
-            "citation_type": "online",
-            "online_title": accession_data.get("type", ""),
+            "citation_type": citation_type, # Can be 'online' or 'cas_number'
             "accession_number": accession_data.get("id", "")
         }
         
+        # Add CAS-specific field if it's a CAS number
+        if accession_type == "CAS":
+            # The actual CAS number is the accession_number
+            unified_citation["ino"] = unified_citation["accession_number"]
+            # Clear the accession_number for CAS since it should not appear elsewhere
+            # in the XML for this type of citation, but keep it in the dict for reference
+            unified_citation["accession_number"] = "" 
+        else:
+            # Add online-specific fields for non-CAS (e.g., Uniprot)
+            unified_citation["online_title"] = accession_data.get("type", "")
         self.accession_citations.append(unified_citation)
         return citation_id
     
@@ -157,6 +178,8 @@ class CitationCatalog:
                 self._build_article_xml(nplcit, citation)
             elif citation["citation_type"] == "online":
                 self._build_online_xml(nplcit, citation)
+            elif citation["citation_type"] == "cas_number": # Special handler for CAS
+                self._build_cas_xml(nplcit, citation)
             elif citation["citation_type"] == "standard":
                 self._build_standard_xml(nplcit, citation)
         
@@ -211,8 +234,21 @@ class CitationCatalog:
             url_elem = ET.SubElement(article, "url")
             url_elem.text = citation["url"]
     
+    def _build_cas_xml(self, parent, citation):
+        """Build XML structure for CAS number citations (npl-type='s')."""
+        article = ET.SubElement(parent, "article")
+        # Empty <atl/> as per the example for CAS
+        ET.SubElement(article, "atl") 
+        
+        serial = ET.SubElement(article, "serial")
+        # Empty <sertitle/> as per the example for CAS
+        ET.SubElement(serial, "sertitle")
+        
+        # The CAS number is placed here in the <ino> tag
+        ino = ET.SubElement(serial, "ino")
+        ino.text = citation.get("ino", "") # Uses the 'ino' field from the unified structure
     def _build_online_xml(self, parent, citation):
-        """Build XML structure for online/accession citations."""
+        """Build XML structure for online/accession citations (e.g., Uniprot - npl-type='e')."""
         online = ET.SubElement(parent, "online")
         
         online_title = ET.SubElement(online, "online-title")

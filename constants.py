@@ -8,6 +8,7 @@ LM_STUDIO_URL = "http://localhost:1234/v1/chat/completions"
 # MODEL_NAME = "qwen/qwen3-1.7b" 
 # MODEL_NAME = "meta-llama-3-8b-instruct"
 MODEL_NAME = "meta-llama-3.1-8b-instruct"
+# MODEL_NAME = "granite-4.0-h-tiny-mlx"
 # MODEL_NAME = "mistralai/magistral-small-2509"
 
 MAX_RETRIES = 3
