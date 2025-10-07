@@ -5,7 +5,8 @@ def correct_npl_mistakes(reference):
     The primary heuristic: If the 'title' is very short (e.g., < 4 words)
     AND the 'publisher' (serial title) is missing, we assume the short title
     is actually the publisher/journal name and swap them.
-    """
+    Corrects improperly formatted DOI URLs (e.g., DOI:10... to https://doi.org/10...).    """
+    corrected = False
     title = reference.get("title", "").strip()
     publisher = reference.get("publisher", "").strip()
 
@@ -21,8 +22,25 @@ def correct_npl_mistakes(reference):
             reference["publisher"] = title
             reference["title"] = "" # Clear the title, as it's now the publisher
             
-            # Optional: Log the correction
             print(f"  ~ CORRECTION: Swapped short title ('{title}') to publisher field.")
-            return True # Indicates a correction was made
+            corrected = True
+    # --- Heuristic 2: DOI URL Correction ---
+    url = reference.get("url", "").strip()
+    
+    # Check for 'doi:' or 'DOI:' prefixes in the URL field (case-insensitive)
+    if url.lower().startswith("doi:"):
+        
+        # 1. Remove the 'doi:' prefix (case-insensitive, 4 characters)
+        # We ensure to strip any leading/trailing whitespace after removing the prefix
+        doi_path = url[4:].strip()
+        
+        # 2. Construct the correct full DOI URL
+        corrected_url = f"https://doi.org/{doi_path}"
+        
+        # 3. Update the reference data
+        reference["url"] = corrected_url
+        
+        print(f"  ~ CORRECTION: Fixed DOI URL: '{url}' -> '{corrected_url}'")
+        corrected = True
 
-    return False # No correction needed
+    return corrected # Returns True if any correction was made  
