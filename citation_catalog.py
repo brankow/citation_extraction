@@ -134,20 +134,20 @@ class CitationCatalog:
         
         # 3. Increment the counter for the *next* citation
         self._npl_counter += 1
-        
+        npl_type = "s"  # 's' for serial/article
+        citation_type = "standard_article" # New internal type to route to the correct builder
         unified_citation = {
             "id": citation_id,
-            "npl_type": "t",  # 't' for technical standard
-            # FIX: Use the calculated default_crossref_id
+            "npl_type": npl_type, 
             "crossrefid": crossref_id or default_crossref_id, 
             "paragraph_num": paragraph_num,
-            "citation_type": "standard",
+            "citation_type": citation_type,
             "title": standard_data.get("title", ""),
-            "standardisation_body": standard_data.get("standardisation_body", ""),
-            "publication_date": standard_data.get("publication_date", ""),
-            "accession_number": standard_data.get("accession_number", ""),
-            "version": standard_data.get("version", ""),
-            "url": standard_data.get("url", "")
+            "standardisation_body": standard_data.get("standardisation_body", ""), # Part of <sertitle>
+            "accession_number": standard_data.get("accession_number", ""), # Part of <sertitle>
+            "version": standard_data.get("version", ""), # Part of <sertitle>
+            "publication_date": standard_data.get("publication_date", ""), # Not mapped in target example but kept for completeness
+            "url": standard_data.get("url", "") # Not mapped in target example but kept for completeness
         }
         
         self.standard_citations.append(unified_citation)
@@ -260,21 +260,25 @@ class CitationCatalog:
         ET.SubElement(online, "avail")
     
     def _build_standard_xml(self, parent, citation):
-        """Build XML structure for standard citations."""
-        standard = ET.SubElement(parent, "standard")
+        """Build XML structure for Standards using the article structure."""
+        article = ET.SubElement(parent, "article")
         
-        std_title = ET.SubElement(standard, "std-title")
-        std_title.text = citation.get("title", "")
+        # 1. Map 'title' to <atl>
+        atl = ET.SubElement(article, "atl")
+        atl.text = citation.get("title", "")
+        serial = ET.SubElement(article, "serial")
+        sertitle = ET.SubElement(serial, "sertitle")
+
+        # 2. Concatenate std-body, std-number, and version for <sertitle>
+        parts = [
+            citation.get("standardisation_body", "").strip(),
+            citation.get("accession_number", "").strip(),
+            citation.get("version", "").strip()
+        ]
         
-        std_body = ET.SubElement(standard, "std-body")
-        std_body.text = citation.get("standardisation_body", "")
-        
-        std_num = ET.SubElement(standard, "std-number")
-        std_num.text = citation.get("accession_number", "")
-        
-        if citation.get("version"):
-            std_ver = ET.SubElement(standard, "std-version")
-            std_ver.text = citation["version"]
+        # Filter out empty strings and join with a space
+        sertitle.text = " ".join(part for part in parts if part)
+
     
     def save_to_file(self, filepath):
         """Save the catalog as XML to a file."""
