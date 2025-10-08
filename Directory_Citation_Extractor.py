@@ -72,8 +72,8 @@ def process_folder():
         start_time = time.time()
         extract_paragraphs(file_path)
         end_time = time.time()
-        
-        print(f"--- [FILE {i + 1}/{total_files}] Finished in {end_time - start_time:.2f} seconds. ---")
+        if constants.terminal_feedback:
+            print(f"--- [FILE {i + 1}/{total_files}] Finished in {end_time - start_time:.2f} seconds. ---")
         
     # --- BATCH DURATION END ---
     batch_end_time = time.time()

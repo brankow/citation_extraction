@@ -94,7 +94,8 @@ def extract_paragraphs(file_path):
                     
                     # --- Step 5a: NPL Reference Extraction ---
                     if contains_year or contains_doi:
-                        print(f"[{paragraph_num}] Extracting NPL references...")
+                        if constants.terminal_feedback:
+                            print(f"[{paragraph_num}] Extracting NPL references...")
                         npl_data = extract_npl_references(stripped_text)
 
                         if isinstance(npl_data, dict) and "references" in npl_data:
@@ -222,7 +223,8 @@ def extract_paragraphs(file_path):
             
             catalog.save_to_file(new_file_path)
         else:
-            print("\nNo citations were found or extracted. No output file generated.")
+            if constants.terminal_feedback:
+                print("\nNo citations were found or extracted. No output file generated.")
 
     except ET.ParseError as e:
         print(f"\nFATAL XML Parse Error: {e}")
