@@ -128,13 +128,16 @@ def extract_paragraphs(file_path):
                                 catalog.add_npl_reference(ref, paragraph_num)
 
                             if total_added > 0:
-                                print(f"  ✓ Added {total_added} NPL reference(s)")
+                                if constants.terminal_feedback:
+                                    print(f"  ✓ Added {total_added} NPL reference(s)")
                             elif total_extracted > 0 and total_added == 0:
                                 # Success in filtering, but nothing left to add. Not a failure.
-                                print(f"  • Extracted {total_extracted} references, added {total_added}")
+                                if constants.terminal_feedback:
+                                    print(f"  • Extracted {total_extracted} references, added {total_added}")
                             else:
                                 # npl_data was valid, but references array was empty, which is fine.
-                                print("  • No NPL references found.")
+                                if constants.terminal_feedback:
+                                    print("  • No NPL references found.")
 
                         else:
                             print(f"  ✗ NPL extraction failed: {npl_data}")
@@ -154,11 +157,13 @@ def extract_paragraphs(file_path):
 
                                 # Filter out invalid accessions
                                 if not acc_type or acc_type.lower() == "none":
-                                    print(f"  - Skipping accession (missing or invalid type): type={repr(acc_type)}, id={repr(acc_id)}")
+                                    if constants.terminal_feedback:
+                                        print(f"  - Skipping accession (missing or invalid type): type={repr(acc_type)}, id={repr(acc_id)}")
                                     continue
                                 
                                 if not acc_id:
-                                    print(f"  - Skipping accession (missing ID): type={repr(acc_type)}, id={repr(acc_id)}")
+                                    if constants.terminal_feedback:
+                                        print(f"  - Skipping accession (missing ID): type={repr(acc_type)}, id={repr(acc_id)}")
                                     continue                                
 
                                 
