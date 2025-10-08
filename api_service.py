@@ -106,7 +106,8 @@ def process_xml_content(xml_text: str) -> str:
                     
                     # --- Step 5a: NPL Reference Extraction ---
                     if contains_year or contains_doi:
-                        print(f"[{paragraph_num}] Extracting NPL references...")
+                        if constants.terminal_feedback:
+                            print(f"[{paragraph_num}] Extracting NPL references...")
                         npl_data = extract_npl_references(stripped_text)
 
                         if isinstance(npl_data, dict) and "references" in npl_data:
@@ -126,16 +127,19 @@ def process_xml_content(xml_text: str) -> str:
                                 catalog.add_npl_reference(ref, paragraph_num)
 
                             if len(references_to_add) > 0:
-                                print(f"  ✓ Added {len(references_to_add)} NPL reference(s)")
+                                if constants.terminal_feedback:
+                                    print(f"  ✓ Added {len(references_to_add)} NPL reference(s)")
                             else:
-                                print("  • No NPL references found or added.")
+                                if constants.terminal_feedback:
+                                    print("  • No NPL references found or added.")
                         else:
                             print(f"  ✗ NPL extraction failed for P:{paragraph_num}")
 
                     
                     # --- Step 5b: Gene Accession ID Extraction  ---
                     if contains_genbank:
-                        print(f"[{paragraph_num}] Extracting accession IDs...")
+                        if constants.terminal_feedback:
+                            print(f"[{paragraph_num}] Extracting accession IDs...")
                         accession_data = extract_accessions_with_llm(stripped_text)
 
                         if isinstance(accession_data, dict) and "accessions" in accession_data:
@@ -153,19 +157,22 @@ def process_xml_content(xml_text: str) -> str:
                             for acc in accessions_to_add:
                                 catalog.add_accession(acc, paragraph_num)
 
-                            print(f"  ✓ Added {len(accessions_to_add)} accession(s)")
+                            if constants.terminal_feedback:
+                                print(f"  ✓ Added {len(accessions_to_add)} accession(s)")
                         else:
                             print(f"  ✗ Accession extraction failed for P:{paragraph_num}")
                     
                     # --- Step 5c: Standards Data Extraction ---
                     if contains_standards:
-                        print(f"[{paragraph_num}] Extracting standards...")
+                        if constants.terminal_feedback:
+                            print(f"[{paragraph_num}] Extracting standards...")
                         standards_data = extract_standard_references(stripped_text, _3gpp_standards, _ieee_standards)
                         
                         if isinstance(standards_data, dict) and "references" in standards_data:
                             for std in standards_data["references"]:
                                 catalog.add_standard(std, paragraph_num)
-                            print(f"  ✓ Added {len(standards_data['references'])} standard(s)")
+                            if constants.terminal_feedback:
+                                print(f"  ✓ Added {len(standards_data['references'])} standard(s)")
                         else:
                             print(f"  ✗ Standards extraction failed for P:{paragraph_num}")
                     # -------------------------------------------

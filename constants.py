@@ -14,6 +14,7 @@ MODEL_NAME = "meta-llama-3.1-8b-instruct"
 MAX_RETRIES = 3
 INITIAL_DELAY = 1 # seconds
 current_year = datetime.now().year
+terminal_feedback = False
 
 # --- COMPILED REGULAR EXPRESSIONS (for performance) ---
 STANDARDS_BODIES_REGEX = re.compile(r'\b(?:3GPP|IEEE)\b', re.IGNORECASE) 

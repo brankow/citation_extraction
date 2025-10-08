@@ -1,4 +1,5 @@
 import re
+import constants
 from datetime import datetime
 
 # Mapping for month abbreviations/full names to numbers (to handle various formats)
@@ -144,8 +145,8 @@ def correct_npl_mistakes(reference):
             # SWAP: Move the short title to the publisher/serial field
             reference["publisher"] = title
             reference["title"] = "" # Clear the title, as it's now the publisher
-            
-            print(f"  ~ CORRECTION: Swapped short title ('{title}') to publisher field.")
+            if constants.terminal_feedback:
+                print(f"  ~ CORRECTION: Swapped short title ('{title}') to publisher field.")
             corrected = True
     # --- Heuristic 2 & 3: DOI URL Correction/Completion ---
     url = reference.get("url", "").strip()
@@ -171,7 +172,8 @@ def correct_npl_mistakes(reference):
         if corrected:
             reference["url"] = url
             if original_url != url:
-                print(f"  ~ CORRECTION: Fixed DOI URL: '{original_url}' -> '{url}'")
+                if constants.terminal_feedback:
+                    print(f"  ~ CORRECTION: Fixed DOI URL: '{original_url}' -> '{url}'")
     # --- Heuristic 3: Date Standardization (ddmmyyyy) ---
     original_date = reference.get("publication_date", "").strip()
     

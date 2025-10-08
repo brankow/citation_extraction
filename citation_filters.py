@@ -64,7 +64,8 @@ def should_skip_npl_reference(ref: dict) -> bool:
     )
 
     if is_standards_date:
-        print(f"  - Skipping NPL reference (Condition 7: 3GPP/IEE in Date): {date}")
+        if constants.terminal_feedback:
+            print(f"  - Skipping NPL reference (Condition 7: 3GPP/IEE in Date): {date}")
         return True # Skip this reference
 
     # Condition 7: Filter out citations with 3GPP as publisher.  
@@ -74,7 +75,8 @@ def should_skip_npl_reference(ref: dict) -> bool:
     )
 
     if is_standards_publisher:
-        print(f"  - Skipping NPL reference (Condition 7: 3GPP/IEE in Publisher): {publisher}")
+        if constants.terminal_feedback:
+            print(f"  - Skipping NPL reference (Condition 7: 3GPP/IEE in Publisher): {publisher}")
         return True # Skip this reference
 
     # Condition 6: Filter out citations with ONLY Title.
@@ -89,28 +91,30 @@ def should_skip_npl_reference(ref: dict) -> bool:
     )
     
     if is_title_only:
-        print(f"  - Skipping NPL reference (Condition 6:Title Only filter): {title}")
+        if constants.terminal_feedback:
+            print(f"  - Skipping NPL reference (Condition 6:Title Only filter): {title}")
         return True # Skip this reference
 
     # Condition 5: Filter out citations with ONLY Publisher and Date.
     
     if (publisher_has_content and date_has_content and not author_has_content and not title_has_content and not volume_has_content and not pages_has_content and not url_has_content):
-        print(f"  - Skipping NPL reference (Condition 5: Publisher & Date Only filter): {publisher}, {date}")
+        if constants.terminal_feedback:
+            print(f"  - Skipping NPL reference (Condition 5: Publisher & Date Only filter): {publisher}, {date}")
         return True # Skip this reference
 
     # Condition 4: Completely Empty Reference (excluding the empty container)
     # Check if ALL major fields are absent (empty list/string)
     if (not author_has_content and not title_has_content and not date_has_content and 
         not publisher_has_content and not volume_has_content and not pages_has_content and not url_has_content):
-        
-        print(f"  - Skipping NPL reference (Condition 4: Completely Empty)")
+        if constants.terminal_feedback:
+            print(f"  - Skipping NPL reference (Condition 4: Completely Empty)")
         return True # Skip this reference
 
     # Condition 3: Only Publication Date is Present (and all others are absent)
     if (not author_has_content and not title_has_content and date_has_content and 
         not publisher_has_content and not volume_has_content and not pages_has_content and not url_has_content):
-        
-        print(f"  - Skipping NPL reference (Condition 3: Only Date is Present): {date}")
+        if constants.terminal_feedback:
+            print(f"  - Skipping NPL reference (Condition 3: Only Date is Present): {date}")
         return True # Skip this reference
     
     # Condition 2: Author, Title, and Date are present, and Author is in Title.
@@ -118,7 +122,8 @@ def should_skip_npl_reference(ref: dict) -> bool:
         
         # If the author string is contained in the title string (case-insensitive)
         if author_string.lower() in title.lower():
-            print(f"  - Skipping NPL reference (Condition 2: Bare Author/Date/Title, Author in Title): {author_string}, {date}")
+            if constants.terminal_feedback:
+                print(f"  - Skipping NPL reference (Condition 2: Bare Author/Date/Title, Author in Title): {author_string}, {date}")
             return True # Skip this reference
 
     # --- FILTERING LOGIC (Condition 1: Author and Date Only) ---
@@ -131,7 +136,8 @@ def should_skip_npl_reference(ref: dict) -> bool:
     
     if is_author_and_date_only:
         # Now author_string is guaranteed to be defined
-        print(f"  - Skipping NPL reference (Condition 1: Author & Date Only filter): {author_string}, {date}")
+        if constants.terminal_feedback:
+            print(f"  - Skipping NPL reference (Condition 1: Author & Date Only filter): {author_string}, {date}")
         return True # Skip this reference
                                 
     # --- FILTERING LOGIC END ---
