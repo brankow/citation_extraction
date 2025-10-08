@@ -180,13 +180,15 @@ def extract_paragraphs(file_path):
                     
                     # --- Step 5c: LLM Structured Standards Data Extraction (if needed) ---
                     if contains_standards:
-                        print(f"[{paragraph_num}] Extracting standards...")
+                        if constants.terminal_feedback:
+                            print(f"[{paragraph_num}] Extracting standards...")
                         standards_data = extract_standard_references(stripped_text, _3gpp_standards, _ieee_standards)
                         
                         if isinstance(standards_data, dict) and "references" in standards_data:
                             for std in standards_data["references"]:
                                 catalog.add_standard(std, paragraph_num)
-                            print(f"  ✓ Added {len(standards_data['references'])} standard(s)")
+                            if constants.terminal_feedback:
+                                print(f"  ✓ Added {len(standards_data['references'])} standard(s)")
                         else:
                             print(f"  ✗ Standards extraction failed: {standards_data}")
                     # -------------------------------------------
