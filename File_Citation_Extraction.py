@@ -35,7 +35,8 @@ def extract_paragraphs(file_path):
     catalog = CitationCatalog()
 
     try:
-        print(f"\n--- Parsing file: {file_path} ---")
+        if constants.terminal_feedback:
+            print(f"\n--- Parsing file: {file_path} ---")
 
         # 1. Parse the XML file
         tree = ET.parse(file_path)
@@ -146,7 +147,8 @@ def extract_paragraphs(file_path):
                     
                     # --- Step 5b: Gene Accession ID Extraction  ---
                     if contains_genbank:
-                        print(f"[{paragraph_num}] Extracting accession IDs...")
+                        if constants.terminal_feedback:
+                            print(f"[{paragraph_num}] Extracting accession IDs...")
                         accession_data = extract_accessions_with_llm(stripped_text)
 
                         if isinstance(accession_data, dict) and "accessions" in accession_data:
@@ -173,8 +175,8 @@ def extract_paragraphs(file_path):
                             # Add valid accessions to catalog
                             for acc in accessions_to_add:
                                 catalog.add_accession(acc, paragraph_num)
-
-                            print(f"  ✓ Added {len(accession_data['accessions'])} accession(s)")
+                            if constants.terminal_feedback:
+                                print(f"  ✓ Added {len(accession_data['accessions'])} accession(s)")
                         else:
                             print(f"  ✗ Accession extraction failed: {accession_data}")
                     

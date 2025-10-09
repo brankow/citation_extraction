@@ -27,7 +27,7 @@ def call_lm_studio_api_with_retry(payload):
     
     for attempt in range(MAX_RETRIES):
         try:
-            response = requests.post(LM_STUDIO_URL, headers=headers, data=json.dumps(payload), timeout=240)
+            response = requests.post(LM_STUDIO_URL, headers=headers, data=json.dumps(payload), timeout=30)
             response.raise_for_status()
             return response.json()
         
@@ -137,9 +137,9 @@ def extract_npl_references(paragraph_text):
         
         Mandatory rules:
         - If no references are found, return a json object with an empty 'references' array.
-        - If there are multiple authors, provide them in an array of strings.
+        - If there are multiple authors, provide them in a comma (,) separated array of strings.
         - Ensure every key is followed by a colon (:), even if the value is an empty string ("").
-        - **CRITICAL RULE: The key and its value MUST be separated by a colon (:), NOT a comma (,) anywhere in the JSON object. For example, it must be "volume": "42", not "volume", "42".**
+        - **CRITICAL RULE: The key and its value MUST be separated by a colon (:), NOT a comma (,) in the JSON object. For example, it must be "volume": "42", not "volume", "42".**
         - Only references with a date should be extracted.
         - Please do not extract patent applications and publications.
 
