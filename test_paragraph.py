@@ -6,16 +6,63 @@ from typing import List, Callable, Tuple
 # --- Configuration ---
 THRESHOLD = 1000  # maximum characters per paragraph before splitting
 
-# List of all available split functions, ordered by preference.
-# The primary split_paragraph_on_dot_double_newline is handled separately.
-SPLIT_METHODS: List[Callable[[str], List[str]]] = []
+# --- Consolidated Patent Regex Definitions (New Structure) ---
 
+# 1. Define the core patent ID matching logic ONCE
+# This constant contains the OR-separated groups for all patent formats (WO, EP, US)
+PATENT_ID_REGEX = r'''
+    (WO\s?\d{2,4}\/\d+[A-Z0-9]{1,2}?)   # WO patents (Group 3 in PATENT_SPLIT_PATTERN)
+    |
+    (EP\s?\d+[\s-]?\d+[\s-]?\d+[A-Z0-9]{1,2}?) # EP patents (Group 4)
+    |
+    (US\s?\d{2}\/\d+)                   # Old US format (Group 5)
+    |
+    (US[\s-]?[A-Z]{0,2}\s?\d{4}[-\/]?\d+) # New US format (Group 6)
+''' 
+
+# 2. Build the Global SPLIT Pattern using the core ID
+# Used for: a) Splitting, b) Substitution of internal patent numbers (relies on Group 1)
+PATENT_SPLIT_PATTERN = re.compile(
+    r'([,;.\s])' +                           # Group 1: The separator
+    r'(' + PATENT_ID_REGEX + r')',           # Group 2: The entire patent ID block
+    re.IGNORECASE | re.VERBOSE) 
+
+# 3. Build the START-OF-STRING Pattern using the core ID
+# Used for: Substitution of patent numbers that start a string (no Group 1 separator)
+PATENT_ONLY_START_PATTERN = re.compile(
+    r'^\s*(' + PATENT_ID_REGEX + r')',       # Group 1: The entire patent ID block (at string start)
+    re.IGNORECASE | re.VERBOSE)
+
+# List of all available split functions, ordered by preference.
+SPLIT_METHODS: List[Callable[[str], List[str]]] = []
 
 def remove_tags(text):
     """Remove all XML/HTML tags from text."""
     return re.sub(r"<[^>]+>", "", text)
 
+# ----------------------------------------------------------------------
+# --- Utility for Patent Replacement (Updated to use new constants) ---
 
+def substitute_patent_numbers(text: str) -> str:
+    """
+    Replaces all patent numbers in a string with 'PATENT'. Handles both 
+    mid-string (with separator) and start-of-string cases.
+    """
+    global PATENT_SPLIT_PATTERN
+    global PATENT_ONLY_START_PATTERN
+    
+    # 1. Handle patent numbers preceded by a separator (Group 1: [,;.\s])
+    # Keeps Group 1 (the separator) and replaces Group 2 (the patent ID) with 'PATENT'.
+    SUBSTITUTION_STRING = r'\g<1>PATENT'
+    modified_text = PATENT_SPLIT_PATTERN.sub(SUBSTITUTION_STRING, text)
+
+    # 2. Handle patent numbers that START the string (no leading separator)
+    # Replaces the entire match (Group 1: patent ID) at the start of the string with 'PATENT'.
+    final_text = PATENT_ONLY_START_PATTERN.sub('PATENT', modified_text).strip()
+    
+    return final_text
+
+# ----------------------------------------------------------------------
 # --- Split Functions ---
 
 def split_paragraph_on_dot_double_newline(text: str) -> List[str]:
@@ -29,28 +76,58 @@ def split_paragraph_on_dot_double_newline(text: str) -> List[str]:
         p = p.strip()
         if not p:
             continue
-        # Only add a dot if the part doesn't already end with a dot, '?', or '!'
         if not p.endswith('.') and not p.endswith('?') and not p.endswith('!'):
             p += '.'
         parts.append(p)
     return parts
 
-
-def split_paragraph_on_punctuation_dash(text: str) -> List[str]:
+def split_paragraph_on_patent_number(text: str) -> List[str]:
     """
-    Secondary split: punctuation (. , : ;) followed by newline + dash
-    The punctuation stays at the end of the first part, dash stays at the start of the next part
+    Splits the text immediately before a patent number (WO/EP/US).
+    NOTE: Substitution is handled separately in process_paragraphs.
     """
-    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    # Include dot in the punctuation set
-    pattern = r'([.,:;])\n(-)'
+    global PATENT_SPLIT_PATTERN
 
     parts = []
     last_index = 0
+    
+    # --- STEP 1: Structural Split ---
+    for m in PATENT_SPLIT_PATTERN.finditer(text):
+        
+        # m.start(1) is the start of the separator (Group 1: [,;.\s])
+        split_index = m.start(1) 
+        
+        # Append the text BEFORE the separator/patent
+        part_before = text[last_index:split_index].strip()
+        if part_before: 
+            parts.append(part_before)
+        
+        # Start the next part from the separator (Group 1)
+        last_index = split_index 
+        
+    # Append the final remaining text
+    remainder = text[last_index:].strip()
+    if remainder:
+        parts.append(remainder)
+        
+    # Check for success (a split must result in more than one part)
+    if len(parts) > 1:
+        return [p for p in parts if p]
+        
+    return [text]
+
+SPLIT_METHODS.append(split_paragraph_on_patent_number)
+
+def split_paragraph_on_punctuation_dash(text: str) -> List[str]:
+    """Secondary split: punctuation (. , : ;) followed by newline + dash"""
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    pattern = r'([.,:;])\n(-)'
+    parts = []
+    last_index = 0
     for m in re.finditer(pattern, normalized):
-        split_index = m.start(1) + 1  # include punctuation in first part
+        split_index = m.start(1) + 1
         parts.append(normalized[last_index:split_index].strip())
-        last_index = m.start(2)  # dash at start of next part
+        last_index = m.start(2)
     remainder = normalized[last_index:].strip()
     if remainder:
         parts.append(remainder)
@@ -58,18 +135,15 @@ def split_paragraph_on_punctuation_dash(text: str) -> List[str]:
 
 SPLIT_METHODS.append(split_paragraph_on_punctuation_dash)
 
-
 def split_paragraph_on_arrow(text: str) -> List[str]:
-    """
-    Tertiary/fallback split: split on ' -->'
-    '-->' belongs to the next part
-    """
+    """Tertiary/fallback split: split on ' -->'"""
     parts = []
     last_index = 0
-    for m in re.finditer(r'\s-->', text):
-        split_index = m.start()  # end previous part just before ' -->'
+    pattern = r'(\s-->\s?)' 
+    for m in re.finditer(pattern, text):
+        split_index = m.start() 
         parts.append(text[last_index:split_index].strip())
-        last_index = m.start() + 1  # include space, '-->' goes to next part
+        last_index = m.end() 
     remainder = text[last_index:].strip()
     if remainder:
         parts.append(remainder)
@@ -77,189 +151,117 @@ def split_paragraph_on_arrow(text: str) -> List[str]:
 
 SPLIT_METHODS.append(split_paragraph_on_arrow)
 
-
 def split_paragraph_on_z_b(text: str) -> List[str]:
-    """
-    Quaternary/fallback split: split on ' z. B. ' (German for 'e.g.').
-    ' z. B. ' belongs to the next part.
-    """
+    """Quaternary/fallback split: split on ' z. B. '"""
     parts = []
     last_index = 0
     pattern = r' z\. B\. '
-    
     for m in re.finditer(pattern, text):
-        split_index = m.start() + 1 # end previous part just *before* 'z.'
+        split_index = m.start() + 1
         parts.append(text[last_index:split_index].strip())
-        last_index = m.start() + 1 # start next part at the 'z.'
-        
+        last_index = m.start() + 1
     remainder = text[last_index:].strip()
     if remainder:
         parts.append(remainder)
-    
     return parts
 
 SPLIT_METHODS.append(split_paragraph_on_z_b)
 
-
 def split_paragraph_on_or_newline_dash(text: str) -> List[str]:
-    """
-    New Split: space + 'or' + newline + dash + space (' or\n- ').
-    ' or' belongs to the end of the first part. '\n- ' belongs to the start of the second part.
-    """
+    """Split: space + 'or' + newline + dash + space"""
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    
-    # Pattern: 
-    # 1. Group 1: (\sor) - Space + 'or'.
-    # 2. Group 2: (\n-\s) - Newline + dash + space.
     pattern = r'(\sor)(\n-\s)'
-
     parts = []
     last_index = 0
     for m in re.finditer(pattern, normalized):
-        # Split index includes ' or' in the first part (Group 1)
         split_index = m.end(1)
         parts.append(normalized[last_index:split_index].strip())
-        
-        # New start index is the start of '\n- ' (Group 2)
         last_index = m.start(2)
-        
     remainder = normalized[last_index:].strip()
     if remainder:
         parts.append(remainder)
-        
     return parts
 
-SPLIT_METHODS.append(split_paragraph_on_or_newline_dash) # Added here
+SPLIT_METHODS.append(split_paragraph_on_or_newline_dash)
 
 
 def split_paragraph_on_punctuation_list_item(text: str) -> List[str]:
-    """
-    Fallback split: punctuation (., ; :) + newline + list item marker.
-    The punctuation stays at the end of the first part. The list item marker stays with the second part.
-    """
+    """Split: punctuation + newline + 1-2 digits + optional bracket/dot"""
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    
-    # Pattern: 
-    # 1. Group 1: ([.,:;]) - Punctuation
-    # 2. \n        - Newline
-    # 3. Group 2: (\(?[0-9]{1,2}\)?\.?) - List item marker
     pattern = r'([.,:;])\n(\(?[0-9]{1,2}\)?\.?)'
-
     parts = []
     last_index = 0
     for m in re.finditer(pattern, normalized):
-        # Split index includes the punctuation in the first part (Group 1)
-        split_index = m.start(1) + 1 
+        split_index = m.start(1) + 1
         parts.append(normalized[last_index:split_index].strip())
-        
-        # New start index is the start of the list item marker (Group 2)
         last_index = m.start(2)
-        
     remainder = normalized[last_index:].strip()
     if remainder:
         parts.append(remainder)
-        
     return parts
 
 SPLIT_METHODS.append(split_paragraph_on_punctuation_list_item)
 
 
-def split_paragraph_on_figure_enumeration(text: str) -> List[str]:
-    """
-    Fallback Split: punctuation (., ; :) + newline + 'Fig', 'FIG', or 'FIGURE' + optional dot + space + 1-3 digits.
-    The punctuation stays at the end of the first part. The figure enumeration stays with the second part.
-    """
-    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    
-    # Updated Pattern: 
-    # 1. Group 1: ([.,:;]) - Punctuation
-    # 2. \n        - Newline
-    # 3. Group 2: ((FIG|FIGURE|Fig)\.?\s[0-9]{1,3}) 
-    #    - Matches FIG, FIGURE, or Fig (case-sensitive) 
-    #    - followed by an optional dot, a space, and 1-3 digits.
-    pattern = r'([.,:;])\n((FIG|FIGURE|Fig)\.?\s[0-9]{1,3})'
-
-    parts = []
-    last_index = 0
-    for m in re.finditer(pattern, normalized):
-        # Split index includes the punctuation in the first part (Group 1)
-        split_index = m.start(1) + 1 
-        parts.append(normalized[last_index:split_index].strip())
-        
-        # New start index is the start of the figure enumeration (Group 2)
-        last_index = m.start(2)
-        
-    remainder = normalized[last_index:].strip()
-    if remainder:
-        parts.append(remainder)
-        
-    return parts
-
-SPLIT_METHODS.append(split_paragraph_on_figure_enumeration)
-
-
 def split_paragraph_on_punctuation_letter_bracket(text: str) -> List[str]:
-    """
-    Fallback Split: punctuation (., ; :) + newline + single letter (a-z/A-Z) + closing bracket ')'.
-    The punctuation stays at the end of the first part. The list item marker stays with the second part.
-    """
+    """Split: punctuation + newline + letter + ')'"""
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    
-    # Pattern: 
-    # 1. Group 1: ([.,:;]) - Punctuation
-    # 2. \n+ - One or more Newlines (CR/LF)
-    # 3. Group 2: ([a-zA-Z]\)) - One letter + closing bracket
     pattern = r'([.,:;])\n+([a-zA-Z]\))'
-
     parts = []
     last_index = 0
     for m in re.finditer(pattern, normalized):
-        # Split index includes the punctuation in the first part (Group 1)
-        split_index = m.start(1) + 1 
+        split_index = m.start(1) + 1
         parts.append(normalized[last_index:split_index].strip())
-        
-        # New start index is the start of the list item marker (Group 2)
-        # We start at m.start(2) to skip the punctuation and newlines
         last_index = m.start(2)
-        
     remainder = normalized[last_index:].strip()
     if remainder:
         parts.append(remainder)
-        
     return parts
 
 SPLIT_METHODS.append(split_paragraph_on_punctuation_letter_bracket)
 
-# --- Recursive Splitting Logic (Unchanged) ---
+
+def split_paragraph_on_figure_enumeration(text: str) -> List[str]:
+    """Split: punctuation + optional newline + 'Fig', 'FIG', or 'FIGURE' + number"""
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    pattern = r'([.,:;])\n*((FIG|FIGURE|Fig)\.?\s[0-9]{1,3})' 
+    parts = []
+    last_index = 0
+    for m in re.finditer(pattern, normalized):
+        split_index = m.start(1) + 1
+        parts.append(normalized[last_index:split_index].strip())
+        last_index = m.start(2)
+    remainder = normalized[last_index:].strip()
+    if remainder:
+        parts.append(remainder)
+    return parts
+
+SPLIT_METHODS.append(split_paragraph_on_figure_enumeration)
+
+# ----------------------------------------------------------------------
+# --- Core Recursive Logic ---
 
 def recursively_split_long_part(part: str, split_methods: List[Callable[[str], List[str]]]) -> Tuple[List[str], bool]:
     """
     Recursively applies fallback split methods to a text part until its length 
     is below THRESHOLD or all methods fail.
-
-    Returns:
-        A tuple: (List of resulting parts, whether any split successfully occurred)
     """
     if len(part) <= THRESHOLD:
-        return [part], False # No split needed
+        return [part], False
 
-    # Try all fallback methods in order
     for split_func in split_methods:
         sub_parts = split_func(part)
 
-        # Check if the split actually occurred (i.e., resulted in multiple parts)
         if len(sub_parts) > 1:
             final_parts = []
             successful_split = True
             
-            # Now, check if any of the new sub-parts are *still* too long, and recurse
             for sub_part in sub_parts:
                 recursed_parts, _ = recursively_split_long_part(sub_part, split_methods)
                 final_parts.extend(recursed_parts)
                 
             return final_parts, successful_split
 
-    # If all methods failed and the part is still too long
     return [part], False
 
 
@@ -276,18 +278,20 @@ def process_paragraphs(file_path):
         
         # If the whole paragraph is already short enough, skip
         if length <= THRESHOLD:
-            # print(f"paragraph {num} length : {length}")
+            # Clean patents and skip printing if short
+            # final_part = substitute_patent_numbers(clean_text)
+            # print(f"--- paragraph {num}.1 ---")
+            # print(final_part)
+            # print()
             continue
 
-        # --- Initial Splitting Strategy ---
+        # --- Initial Splitting Strategy (for long paragraphs) ---
         
-        # 1️⃣ Primary split: dot + double newline (This is often the best split)
+        # 1️⃣ Primary split: dot + double newline
         parts = split_paragraph_on_dot_double_newline(clean_text)
         
-        # 2️⃣ Secondary/Recursive check: For *every* resulting part, 
-        #    apply all fallback methods recursively if it's too long.
+        # 2️⃣ Secondary/Recursive check: 
         final_parts = []
-        # Flag to track if the paragraph was ever successfully split at any level
         was_split = len(parts) > 1 
 
         for part in parts:
@@ -297,8 +301,7 @@ def process_paragraphs(file_path):
             if part_was_split:
                 was_split = True
         
-        # If the primary split failed (len(parts) <= 1), treat the whole paragraph 
-        # as a single long part and apply the recursive fallback splits directly.
+        # 3️⃣ If primary split failed, apply recursive fallbacks to the whole text
         if not was_split and len(final_parts) <= 1:
             final_parts, was_split = recursively_split_long_part(clean_text, SPLIT_METHODS)
             
@@ -316,14 +319,17 @@ def process_paragraphs(file_path):
         still_too_long = [p for p in final_parts if len(p) > THRESHOLD]
         if still_too_long:
             print(f"WARNING: paragraph {num} split, but {len(still_too_long)} parts remain > {THRESHOLD} chars.")
-            # Continue printing the split parts despite the warning
-        
+            
         # We have multiple parts — print summary and each part
         lengths = [len(p) for p in final_parts]
         print(f"paragraph {num} lengths : {', '.join(map(str, lengths))}")
         for j, part in enumerate(final_parts, start=1):
+            
+            # 🌟 FINAL STEP: Apply the patent substitution before printing
+            cleaned_part = substitute_patent_numbers(part)
+            
             print(f"--- paragraph {num}.{j} ---")
-            print(part)
+            print(cleaned_part)
             print()
 
 
