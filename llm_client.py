@@ -269,7 +269,6 @@ def extract_accessions_with_llm(paragraph_text):
         "temperature": 0.0, # Maximize determinism (model doesn't 'think' creatively)
         "stream": False
     }
-
     try:
         llm_response = call_lm_studio_api_with_retry(payload)
         if llm_response and 'choices' in llm_response and llm_response['choices']:

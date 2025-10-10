@@ -6,7 +6,8 @@ import constants # Contains Regexes and API settings
 from citation_catalog import CitationCatalog 
 from citation_filters import should_skip_npl_reference 
 from citation_corrections import correct_npl_mistakes
-from utils import select_xml_file, extract_paragraph_texts
+from utils import select_xml_file, extract_paragraph_texts, simplify_long_words, simplify_bio_numbers
+from paragraph_splitter import split_and_clean_paragraph
 
 from llm_client import (
     extract_npl_references,
@@ -57,34 +58,53 @@ def extract_paragraphs(file_path):
             )
             
             # 4. Check if the required 'num' attribute exists AND apply filtering
-            if paragraph_num:
+            if not paragraph_num:
+                continue
                 
-                # Filtering Condition 1: Contains a year between 1900 and 2025
+            # 5. SPLIT THE PARAGRAPH IF IT'S TOO LONG
+            split_parts = split_and_clean_paragraph(stripped_text)
+            
+            if constants.terminal_feedback and len(split_parts) > 1:
+                lengths = [len(p) for p in split_parts]
+                print(f"[{paragraph_num}] SPLIT: lengths -> {', '.join(map(str, lengths))}")
+
+            # 6. ITERATE OVER THE SPLIT PARTS
+            for i, part_text in enumerate(split_parts):
                 
+                # Assign a unique ID for the sub-paragraph, e.g., "p123.1", "p123.2"
+                part_num = f"{paragraph_num}.{i+1}" if len(split_parts) > 1 else paragraph_num
+
+                # The part text is what goes into the LLM logic
+                current_text_to_process = part_text 
+
+                # 7. Apply Filtering (Use the current part_text)                
                 matched_year = None 
                 contains_year = False
                 
                 # Use stripped_text for boundary-based year matching
-                year_detected = constants.YEAR_REGEX.search(stripped_text)
+                year_detected = constants.YEAR_REGEX.search(current_text_to_process)
                 
                 if year_detected:
                     contains_year = True
                     matched_year = year_detected.group(1)
 
                 # Filtering Condition 2: Contains the literal tag <nplcit
+                # Since we stripped the text before splitting, we can't reliably check for the tag in the *part*.
+                # For safety, we'll keep the original simple count on the *whole* paragraph's raw_content_with_tags
+                # or rely on LLM extraction if the paragraph contains other citation indicators.
                 citation_count = raw_content_with_tags.count('<nplcit') 
-                contains_nplcit = citation_count > 0
+                contains_nplcit = citation_count > 0 
                 
                 # Filtering Condition 3: Contains "genbank" (case insensitive)
-                contains_genbank = bool(constants.GENBANK_REGEX.search(stripped_text))
+                contains_genbank = bool(constants.GENBANK_REGEX.search(current_text_to_process))
 
                 # Filtering Condition 4: Contains doi link
 
-                contains_doi = bool(constants.DOI_REGEX.search(stripped_text))
+                contains_doi = bool(constants.DOI_REGEX.search(current_text_to_process))
 
                 # Filtering Condition 5: Contains standard names like 3GPP, IEEE, ISO, W3C
-                _3gpp_standards = extract_3gpp_references(stripped_text)
-                _ieee_standards = extract_ieee_references(stripped_text)
+                _3gpp_standards = extract_3gpp_references(current_text_to_process)
+                _ieee_standards = extract_ieee_references(current_text_to_process)
                 
                 contains_standards = bool(_3gpp_standards) or bool(_ieee_standards)
 
@@ -93,63 +113,69 @@ def extract_paragraphs(file_path):
                 if contains_year or contains_nplcit or contains_genbank or contains_doi or contains_standards:
                     paragraphs_found += 1
                     
-                    # --- Step 5a: NPL Reference Extraction ---
+
+                    # --- Step 5a: NPL Reference Extraction  ---
                     if contains_year or contains_doi:
                         if constants.terminal_feedback:
-                            print(f"[{paragraph_num}] Extracting NPL references...")
-                        npl_data = extract_npl_references(stripped_text)
+                            print(f"[{part_num}] Extracting NPL references...")
 
+                        # Now that 'current_text_to_process' is pre-split, we call the LLM directly.
+                        
+                        npl_data = extract_npl_references(current_text_to_process)
+                        
+                        total_extracted_npl = 0
+                        all_references_to_add = [] # List to collect all valid references
+                        
+                        # 1. Process the LLM Output
                         if isinstance(npl_data, dict) and "references" in npl_data:
-                                            
-                            references_to_add = []
+                            total_extracted_npl = len(npl_data["references"])
                             
+                            # Process and filter references
                             for ref in npl_data["references"]:
-
-                                # --- CORRECTION SECTION START ---
-                                # Apply heuristic corrections to the reference data dictionary in-place
                                 correct_npl_mistakes(ref)
-                                
-                                # Re-read variables after potential correction
-                                title = ref.get("title", "")
-                                publisher = ref.get("publisher", "")
-                                # --- CORRECTION SECTION END ---
-
-
-                                # --- FILTERING LOGIC (Externalized) ---
                                 if should_skip_npl_reference(ref):
-                                    continue # Skip this reference
+                                    continue 
                                 
-                                references_to_add.append(ref)
-                            
-                            # Now add only the references that passed the filter
-                            total_extracted = len(npl_data['references'])
-                            total_added = len(references_to_add)
-                                    
-                            # Now add only the references that passed the filter
-                            for ref in references_to_add:
-                                catalog.add_npl_reference(ref, paragraph_num)
+                                # Collect valid references
+                                all_references_to_add.append(ref) 
+                        else: 
+                            if constants.terminal_feedback:
+                                # Print failure for the specific part
+                                print(f"  ✗ NPL extraction failed: {npl_data}")
 
-                            if total_added > 0:
-                                if constants.terminal_feedback:
-                                    print(f"  ✓ Added {total_added} NPL reference(s)")
-                            elif total_extracted > 0 and total_added == 0:
-                                # Success in filtering, but nothing left to add. Not a failure.
-                                if constants.terminal_feedback:
-                                    print(f"  • Extracted {total_extracted} references, added {total_added}")
-                            else:
-                                # npl_data was valid, but references array was empty, which is fine.
-                                if constants.terminal_feedback:
-                                    print("  • No NPL references found.")
+                        # 2. Add all valid references to the catalog.
+                        total_added_npl = len(all_references_to_add)
+                        for ref in all_references_to_add:
+                            catalog.add_npl_reference(ref, part_num) 
 
+                        # 3. Consolidate and print final feedback.
+                        if total_added_npl > 0:
+                            if constants.terminal_feedback:
+                                # Report the final count, no need to mention "chunks" anymore
+                                print(f"  ✓ Added {total_added_npl} NPL reference(s)")
+                        elif total_extracted_npl > 0 and total_added_npl == 0:
+                            # Success in extraction, but all were filtered out.
+                            if constants.terminal_feedback:
+                                print(f"  • Extracted {total_extracted_npl} references, added 0 (All filtered out)")
                         else:
-                            print(f"  ✗ NPL extraction failed: {npl_data}")
-
-                    
+                            # Total extracted was 0.
+                            if constants.terminal_feedback:
+                                print("  • No NPL references found.")
+                  
                     # --- Step 5b: Gene Accession ID Extraction  ---
                     if contains_genbank:
                         if constants.terminal_feedback:
-                            print(f"[{paragraph_num}] Extracting accession IDs...")
-                        accession_data = extract_accessions_with_llm(stripped_text)
+                            print(f"[{part_num}] Extracting accession IDs...")
+                        
+                        
+                        # VITAL: Step A - Remove common biological number clutter (NEW STEP)
+                        simplified_bio_text = simplify_bio_numbers(current_text_to_process)
+
+                        # VITAL: Step B - Simplify long chemical names
+                        simplified_text = simplify_long_words(simplified_bio_text, max_length=20)
+
+                        # Pass the simplified text to the extraction function
+                        accession_data = extract_accessions_with_llm(simplified_text)
 
                         if isinstance(accession_data, dict) and "accessions" in accession_data:
                             accessions_to_add = []
@@ -159,16 +185,10 @@ def extract_paragraphs(file_path):
 
 
                                 # Filter out invalid accessions
-                                if not acc_type or acc_type.lower() == "none":
+                                if not acc_type or acc_type.lower() == "none" or not acc_id:
                                     if constants.terminal_feedback:
-                                        print(f"  - Skipping accession (missing or invalid type): type={repr(acc_type)}, id={repr(acc_id)}")
+                                        print(f"  - Skipping invalid accession: type={repr(acc_type)}, id={repr(acc_id)}")
                                     continue
-                                
-                                if not acc_id:
-                                    if constants.terminal_feedback:
-                                        print(f"  - Skipping accession (missing ID): type={repr(acc_type)}, id={repr(acc_id)}")
-                                    continue                                
-
                                 
                                 accessions_to_add.append(acc)
 
@@ -183,12 +203,11 @@ def extract_paragraphs(file_path):
                     # --- Step 5c: LLM Structured Standards Data Extraction (if needed) ---
                     if contains_standards:
                         if constants.terminal_feedback:
-                            print(f"[{paragraph_num}] Extracting standards...")
-                        standards_data = extract_standard_references(stripped_text, _3gpp_standards, _ieee_standards)
-                        
+                            print(f"[{part_num}] Extracting standards...")
+                        standards_data = extract_standard_references(current_text_to_process, _3gpp_standards, _ieee_standards)
                         if isinstance(standards_data, dict) and "references" in standards_data:
                             for std in standards_data["references"]:
-                                catalog.add_standard(std, paragraph_num)
+                                catalog.add_standard(std, part_num)
                             if constants.terminal_feedback:
                                 print(f"  ✓ Added {len(standards_data['references'])} standard(s)")
                         else:
