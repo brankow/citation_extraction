@@ -15,6 +15,7 @@ class CitationCatalog:
         self._standard_counter = 1 # <-- They rely on the shared _npl_counter for XML ID generation
         self._npl_unique_keys = set()
 
+    @staticmethod 
     def _safe_str(value):
         return str(value) if value is not None else ""
     
@@ -25,9 +26,9 @@ class CitationCatalog:
         """
         # 0. Create the unique key for this reference
         author_string = ", ".join(reference_data.get("author", [])).strip()
-        title = self._safe_str(reference_data.get("title", ""))
-        publisher = self._safe_str(reference_data.get("publisher", ""))
-        publication_date = self._safe_str(reference_data.get("publication_date", "")) 
+        title = CitationCatalog._safe_str(reference_data.get("title", ""))
+        publisher = CitationCatalog._safe_str(reference_data.get("publisher", ""))
+        publication_date = CitationCatalog._safe_str(reference_data.get("publication_date", "")) 
 
         # Use a combination of author, title, publisher, and date as the unique identifier
         citation_key = (
