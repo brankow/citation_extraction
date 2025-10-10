@@ -27,7 +27,7 @@ def call_lm_studio_api_with_retry(payload):
     
     for attempt in range(MAX_RETRIES):
         try:
-            response = requests.post(LM_STUDIO_URL, headers=headers, data=json.dumps(payload), timeout=30)
+            response = requests.post(LM_STUDIO_URL, headers=headers, data=json.dumps(payload), timeout=60)
             response.raise_for_status()
             return response.json()
         
@@ -237,7 +237,7 @@ def extract_standard_references(paragraph_text, _3gpp_standards, _ieee_standards
 def extract_accessions_with_llm(paragraph_text):
     """
     Sends the cleaned paragraph text to the LM Studio model to extract
-    biological accession IDs (e.g., Genbank, Uniprot, CAS, etc.) and their types ONLY.
+    biological and chemical accession IDs (e.g., Genbank, Uniprot, CAS, etc.) and their types ONLY.
     """
     
     # 1. System prompt emphasizes strict adherence to the schema
@@ -247,7 +247,7 @@ def extract_accessions_with_llm(paragraph_text):
     
     # 2. User prompt defines the required structured output and includes the schema
     user_prompt = f"""
-        From the following text, extract all biological database accession IDs 
+        From the following text, extract all biological and chemical database accession IDs 
         (e.g., Genbank, Uniprot, Swissprot, PDB, RefSeq, NCBI, CAS, EMBL) and their corresponding database type. 
         Ensure the output is a single JSON object that strictly conforms to the JSON schema provided below.
         

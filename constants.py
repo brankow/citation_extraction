@@ -14,7 +14,7 @@ MODEL_NAME = "meta-llama-3.1-8b-instruct"
 MAX_RETRIES = 3
 INITIAL_DELAY = 1 # seconds
 current_year = datetime.now().year
-terminal_feedback = True  # Set to True to enable terminal feedback 
+terminal_feedback = False  # Set to True to enable terminal feedback 
 
 # --- COMPILED REGULAR EXPRESSIONS (for performance) ---
 STANDARDS_BODIES_REGEX = re.compile(r'\b(?:3GPP|IEEE)\b', re.IGNORECASE) 
@@ -42,7 +42,7 @@ YEAR_PATTERN = '|'.join(years_list)
 YEAR_REGEX = re.compile(rf'\b({YEAR_PATTERN})\b')
 
 # Genbank and biological database patterns
-GENBANK_REGEX = re.compile(r'\b(?:CAS|genbank|Uniprot|Swissprot|PDB|RefSeq|NCBI)\b', re.IGNORECASE)
+GENBANK_REGEX = re.compile(r'\b(?:CAS|genbank|Genbank|Uniprot|Swissprot|PDB|RefSeq|NCBI)\b')
 
 # DOI pattern
 DOI_REGEX = re.compile(
