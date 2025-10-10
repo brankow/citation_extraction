@@ -25,12 +25,18 @@ def should_skip_npl_reference(ref: dict) -> bool:
 
     # Get the key fields
     author = ref.get("author", [])
-    title = ref.get("title", "").strip()
-    date = ref.get("publication_date", "").strip()
-    publisher = ref.get("publisher", "").strip()
-    volume = ref.get("volume", "").strip()
-    pages = ref.get("pages", "").strip()
-    url = ref.get("url", "").strip()
+    title_raw = ref.get("title")
+    title = title_raw.strip() if title_raw is not None else ""
+    date_raw = ref.get("publication_date")
+    date = date_raw.strip() if date_raw is not None else ""
+    publisher_raw = ref.get("publisher")
+    publisher = publisher_raw.strip() if publisher_raw is not None else ""
+    volume_raw = ref.get("volume")
+    volume = volume_raw.strip() if volume_raw is not None else ""
+    pages_raw = ref.get("pages")
+    pages = pages_raw.strip() if pages_raw is not None else ""
+    url_raw = ref.get("url")
+    url = url_raw.strip() if url_raw is not None else ""
 
     # Check presence of key fields
     author_has_content = has_content(author)

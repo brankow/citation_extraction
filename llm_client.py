@@ -55,7 +55,8 @@ def robust_json_extract(llm_text):
     Uses compiled regex from constants for efficiency.
     """
     # 1. Aggressive cleaning: remove non-standard spaces, markdown fences, and common LLM thinking tags.
-
+    if llm_text is None:
+            llm_text = ""
     cleaned_text = llm_text.replace('\xa0', ' ').strip()
     
     # Remove common JSON markdown wrappers and thinking tags
@@ -164,7 +165,8 @@ def extract_npl_references(paragraph_text):
     try:
         llm_response = call_lm_studio_api_with_retry(payload)
         if llm_response and 'choices' in llm_response and llm_response['choices']:
-            llm_text = llm_response['choices'][0]['message']['content']
+            llm_text_raw = llm_response['choices'][0]['message']['content']
+            llm_text = llm_text_raw if llm_text_raw is not None else "" 
             return robust_json_extract(llm_text)
         else:
             return "[LLM Extraction Failed: Invalid response structure or no choices returned.]"
@@ -227,7 +229,8 @@ def extract_standard_references(paragraph_text, _3gpp_standards, _ieee_standards
     try:
         llm_response = call_lm_studio_api_with_retry(payload)
         if llm_response and 'choices' in llm_response and llm_response['choices']:
-            llm_text = llm_response['choices'][0]['message']['content']
+            llm_text_raw = llm_response['choices'][0]['message']['content']
+            llm_text = llm_text_raw if llm_text_raw is not None else "" 
             return robust_json_extract(llm_text)
         else:
             return "[LLM Extraction Failed: Invalid response structure or no choices returned.]"
@@ -272,7 +275,8 @@ def extract_accessions_with_llm(paragraph_text):
     try:
         llm_response = call_lm_studio_api_with_retry(payload)
         if llm_response and 'choices' in llm_response and llm_response['choices']:
-            llm_text = llm_response['choices'][0]['message']['content']
+            llm_text_raw = llm_response['choices'][0]['message']['content']
+            llm_text = llm_text_raw if llm_text_raw is not None else "" 
             return robust_json_extract(llm_text)
         else:
             return "[LLM Extraction Failed: Invalid response structure or no choices returned.]"

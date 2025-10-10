@@ -145,6 +145,12 @@ def process_xml_content(xml_text: str) -> str:
                         if isinstance(accession_data, dict) and "accessions" in accession_data:
                             accessions_to_add = []
                             for acc in accession_data["accessions"]:
+
+                                if not isinstance(acc, dict):
+                                    if constants.terminal_feedback:
+                                        print(f"  ⚠ Skipping invalid accession entry: {acc}")
+                                    continue 
+
                                 acc_type = acc.get("type", "").strip()
                                 acc_id = acc.get("id", "").strip()
 

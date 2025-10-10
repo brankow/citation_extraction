@@ -273,6 +273,8 @@ def split_and_clean_paragraph(text: str) -> List[str]:
     Returns:
         List[str]: A list of split sub-paragraphs.
     """
+    if text is None:
+        return []
     clean_text = text.strip()
     length = len(clean_text)
     

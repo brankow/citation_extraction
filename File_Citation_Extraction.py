@@ -182,9 +182,16 @@ def extract_paragraphs(file_path):
                         if isinstance(accession_data, dict) and "accessions" in accession_data:
                             accessions_to_add = []
                             for acc in accession_data["accessions"]:
-                                acc_type = acc.get("type", "").strip()
-                                acc_id = acc.get("id", "").strip()
-
+                                if not isinstance(acc, dict):
+                                    if constants.terminal_feedback:
+                                        print(f"  - Skipping invalid accession entry (not a dict): {acc}")
+                                    continue
+                                
+                                acc_type_raw = acc.get("type")
+                                acc_type = acc_type_raw.strip() if acc_type_raw is not None else ""
+                                
+                                acc_id_raw = acc.get("id")
+                                acc_id = acc_id_raw.strip() if acc_id_raw is not None else ""
 
                                 # Filter out invalid accessions
                                 if not acc_type or acc_type.lower() == "none" or not acc_id:

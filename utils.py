@@ -97,7 +97,10 @@ def extract_paragraph_texts(p_element, xml_tags_regex):
             raw_content_with_tags = ""
 
         # Create the plain-text (stripped) version using the constants regex
-        stripped_text = xml_tags_regex.sub('', raw_content_with_tags).strip()
+        if xml_tags_regex is None:
+            stripped_text = raw_content_with_tags.strip()
+        else:
+            stripped_text = xml_tags_regex.sub('', raw_content_with_tags).strip()
         
         return raw_content_with_tags, stripped_text
 

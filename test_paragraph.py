@@ -51,6 +51,9 @@ def substitute_patent_numbers(text: str) -> str:
     global PATENT_SPLIT_PATTERN
     global PATENT_ONLY_START_PATTERN
     
+    if text is None:
+        return ""
+
     # 1. Handle patent numbers preceded by a separator (Group 1: [,;.\s])
     # Keeps Group 1 (the separator) and replaces Group 2 (the patent ID) with 'PATENT'.
     SUBSTITUTION_STRING = r'\g<1>PATENT'
@@ -277,6 +280,8 @@ def split_and_clean_paragraph(text: str) -> List[str]:
     Main function to split a single raw paragraph string, enforcing patent splitting 
     unconditionally, and then applying length-based recursive splitting.
     """
+    if text is None:
+        return []
     clean_text = text.strip()
     
     # 1. NEW: Unconditionally split on patent numbers first (regardless of length).

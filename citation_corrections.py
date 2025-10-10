@@ -133,10 +133,12 @@ def correct_npl_mistakes(reference):
 
 
     # --- Heuristic 1: Title/Publisher Swap ---
-    title = reference.get("title", "").strip()
-    publisher = reference.get("publisher", "").strip()
+    title_raw = reference.get("title")
+    title = title_raw.strip() if title_raw is not None else ""
+    publisher_raw = reference.get("publisher")
+    publisher = publisher_raw.strip() if publisher_raw is not None else ""
     title_word_count = len(title.split())
-    
+
     if title_word_count > 0 and title_word_count < 4 and not publisher:
         
         # Check if the title starts with a common journal indicator (optional, but improves confidence)
@@ -149,7 +151,8 @@ def correct_npl_mistakes(reference):
                 print(f"  ~ CORRECTION: Swapped short title ('{title}') to publisher field.")
             corrected = True
     # --- Heuristic 2 & 3: DOI URL Correction/Completion ---
-    url = reference.get("url", "").strip()
+    url_raw = reference.get("url")
+    url = url_raw.strip() if url_raw is not None else ""
     
     if url:
         original_url = url
@@ -175,7 +178,8 @@ def correct_npl_mistakes(reference):
                 if constants.terminal_feedback:
                     print(f"  ~ CORRECTION: Fixed DOI URL: '{original_url}' -> '{url}'")
     # --- Heuristic 3: Date Standardization (ddmmyyyy) ---
-    original_date = reference.get("publication_date", "").strip()
+    original_date_raw = reference.get("publication_date")
+    original_date = original_date_raw.strip() if original_date_raw is not None else ""
     
     if original_date:
         transformed_date, success = standardize_date(original_date)
