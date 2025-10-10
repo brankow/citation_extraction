@@ -1,5 +1,3 @@
-# paragraph_splitter.py
-
 import re
 from typing import List, Callable, Tuple
 
@@ -31,6 +29,7 @@ PATENT_ONLY_START_PATTERN = re.compile(
 
 # List of all available split functions, ordered by preference.
 SPLIT_METHODS: List[Callable[[str], List[str]]] = []
+
 def remove_tags(text: str) -> str:
     """Remove all XML/HTML tags from text."""
     return re.sub(r"<[^>]+>", "", text)
@@ -78,10 +77,6 @@ def split_paragraph_on_patent_number(text: str) -> List[str]:
     for m in PATENT_SPLIT_PATTERN.finditer(text):
         
         # m.start(1) is the start of the separator (Group 1: [,;.\s])
-        # The split point should be immediately after the *previous* content ends,
-        # and before the patent starts. 
-        
-        # We find the start of the separator:
         split_index = m.start(1) 
         
         # 1. Append the text BEFORE the separator/patent
@@ -261,55 +256,70 @@ def recursively_split_long_part(part: str, split_methods: List[Callable[[str], L
 
     return [part], False
 
+
+# --- Main Exportable Splitter Function (Refactored for unconditional split) ---
+
 def split_and_clean_paragraph(text: str) -> List[str]:
     """
-    Main function to split a single raw paragraph string, recursively applying
-    splitting rules, and performing final patent number substitution.
+    Main function to split a single raw paragraph string, enforcing patent splitting 
+    unconditionally, and then applying length-based recursive splitting.
+    
+    NOTE: This function performs structural splitting only. Patent number substitution
+    is handled by the caller function (extract_paragraphs) right before an LLM call.
     
     Args:
         text (str): The raw paragraph string (assumed to be already stripped of XML tags).
         
     Returns:
-        List[str]: A list of cleaned, split sub-paragraphs.
+        List[str]: A list of split sub-paragraphs.
     """
     clean_text = text.strip()
     length = len(clean_text)
     
-    # 1. Handle short paragraphs immediately (only apply cleaning/substitution)
-    if length <= THRESHOLD:
-        cleaned_part = substitute_patent_numbers(clean_text)
-        return [cleaned_part]
-
-    # 2. Primary split: dot + double newline
-    parts = split_paragraph_on_dot_double_newline(clean_text)
+    # 1. UNCONDITIONAL PATENT SPLIT
+    # The patent splitter runs regardless of length.
+    patent_split_parts = split_paragraph_on_patent_number(clean_text)
     
     final_parts = []
-    was_split = len(parts) > 1 
 
-    # 3. Recursive check on primary parts
-    for part in parts:
-        recursed_parts, part_was_split = recursively_split_long_part(part, SPLIT_METHODS)
-        final_parts.extend(recursed_parts)
-        if part_was_split:
-            was_split = True
-    
-    # 4. If primary split failed, apply recursive fallbacks to the whole text
-    if not was_split and len(final_parts) <= 1:
-        final_parts, was_split = recursively_split_long_part(clean_text, SPLIT_METHODS)
+    # 2. LENGTH-BASED AND RECURSIVE SPLITTING on the results of the patent split
+    for part in patent_split_parts:
+        part_length = len(part)
+
+        if part_length <= THRESHOLD:
+            final_parts.append(part)
+            continue 
+
+        # Start recursive splitting for long parts
         
-    # 5. Final cleaning and substitution
-    # The splitting logic might produce a single, long part if all splitting failed.
-    # We apply the substitution to ALL final parts.
-    
-    output_parts = []
-    for part in final_parts:
-        # Check if the part is still too long (an error condition to log elsewhere)
-        if len(part) > THRESHOLD and not was_split:
-             # If a single, long part remains and no splitting occurred, substitute and return
-             cleaned_part = substitute_patent_numbers(part)
-             return [f"ERROR: COULD NOT SPLIT (Length: {length}) - {cleaned_part}"] 
-             
-        cleaned_part = substitute_patent_numbers(part)
-        output_parts.append(cleaned_part)
-            
-    return output_parts
+        # 2a. Primary split: dot + double newline
+        sub_parts = split_paragraph_on_dot_double_newline(part)
+        
+        was_recursively_split = False
+        recursed_final_parts = []
+
+        # 2b. Secondary/Recursive check on sub-parts
+        for sub_part in sub_parts:
+            # Recursively split (uses SPLIT_METHODS, which contains other splitters)
+            parts_from_recursion, part_was_split = recursively_split_long_part(sub_part, SPLIT_METHODS)
+            recursed_final_parts.extend(parts_from_recursion)
+            if part_was_split:
+                was_recursively_split = True
+        
+        # 2c. If dot split failed, apply recursive fallbacks to the whole long part
+        if not was_recursively_split and len(recursed_final_parts) <= 1:
+            # Only try recursion if the original part was long
+            if part_length > THRESHOLD:
+                recursed_final_parts, was_recursively_split = recursively_split_long_part(part, SPLIT_METHODS)
+        
+        
+        # Check for failure to split a long part.
+        if part_length > THRESHOLD and not was_recursively_split and len(recursed_final_parts) <= 1:
+             # If splitting failed, just return the single large part. The caller will log the error.
+             final_parts.append(part)
+        else:
+            # If splitting was successful or the part was split by dot-double-newline
+            final_parts.extend(recursed_final_parts)
+
+    # Filter out empty strings
+    return [p for p in final_parts if p.strip()]

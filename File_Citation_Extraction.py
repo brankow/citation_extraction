@@ -162,19 +162,21 @@ def extract_paragraphs(file_path):
                             if constants.terminal_feedback:
                                 print("  • No NPL references found.")
                   
-                    # --- Step 5b: Gene Accession ID Extraction  ---
+                    # --- Step 5b: Gene Accession ID Extraction ---
                     if contains_genbank:
                         if constants.terminal_feedback:
                             print(f"[{part_num}] Extracting accession IDs...")
                         
-                        
-                        # VITAL: Step A - Remove common biological number clutter (NEW STEP)
-                        simplified_bio_text = simplify_bio_numbers(current_text_to_process)
+                        # 1. Start with the pre-split paragraph part
+                        text_for_accession = current_text_to_process 
 
-                        # VITAL: Step B - Simplify long chemical names
+                        # 2. VITAL: Step A - Remove common biological number clutter (NEW STEP)
+                        simplified_bio_text = simplify_bio_numbers(text_for_accession)
+
+                        # 3. VITAL: Step B - Simplify long chemical names
                         simplified_text = simplify_long_words(simplified_bio_text, max_length=20)
 
-                        # Pass the simplified text to the extraction function
+                        # 5. Pass the finally cleaned text to the extraction function
                         accession_data = extract_accessions_with_llm(simplified_text)
 
                         if isinstance(accession_data, dict) and "accessions" in accession_data:
