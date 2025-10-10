@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-
+import constants
 # --- Unified Document Structure ---
 class CitationCatalog:
     """
@@ -286,7 +286,8 @@ class CitationCatalog:
         tree = ET.ElementTree(root)
         ET.indent(tree, space="    ")  # Pretty print
         tree.write(filepath, encoding="UTF-8", xml_declaration=True)
-        print(f"\n✓ Citation catalog saved to: {filepath}")
+        if constants.terminal_feedback:
+            print(f"\n✓ Citation catalog saved to: {filepath}")
     
     def print_summary(self):
         """Print a summary of collected citations."""
