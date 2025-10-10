@@ -14,7 +14,7 @@ MODEL_NAME = "meta-llama-3.1-8b-instruct"
 MAX_RETRIES = 3
 INITIAL_DELAY = 1 # seconds
 current_year = datetime.now().year
-terminal_feedback = False
+terminal_feedback = True  # Set to True to enable terminal feedback 
 
 # --- COMPILED REGULAR EXPRESSIONS (for performance) ---
 STANDARDS_BODIES_REGEX = re.compile(r'\b(?:3GPP|IEEE)\b', re.IGNORECASE) 
@@ -33,7 +33,7 @@ _3GPP_PRESENT = re.compile(r'\b3GPP\b', flags=re.IGNORECASE)
 # IEEE patterns
 _IEEE_PRESENT = re.compile(r'\bIEEE\b', re.IGNORECASE)
 _IEEE_PATTERN = re.compile(
-    r'\bP?\d{3,4}(?:\.[A-Za-z0-9]+)*\b',
+    r'\bP?\d{3,4}(?:\.[A-Za-z0-9]+)+\b', # The '*' has been changed to a '+'
     re.IGNORECASE
 )
 # Year detection pattern (1900-2025)
