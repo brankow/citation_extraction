@@ -1,6 +1,11 @@
 import re
 import constants
 from datetime import datetime
+from typing import List, Callable, Tuple, Dict, Any
+
+# ----------------------------------------------------------------------
+# --- Global Definitions and Configuration ---
+# ----------------------------------------------------------------------
 
 # Mapping for month abbreviations/full names to numbers (to handle various formats)
 MONTH_MAP = {
@@ -9,6 +14,24 @@ MONTH_MAP = {
     'january': '01', 'february': '02', 'march': '03', 'april': '04', 'june': '06',
     'july': '07', 'august': '08', 'september': '09', 'october': '10', 'november': '11', 'december': '12'
 }
+
+# --- URL Cleaning Helpers ---
+
+# Unsafe/Unallowed Characters from the list (must be percent-encoded if used as data)
+UNALLOWED_URL_CHARS = [' ', '"', '<', '>', '{', '}', '|', '\\', '^', '~', '[', ']']
+# Create a regex pattern to split on any of these characters
+URL_SPLIT_PATTERN = re.compile(f"[{re.escape(''.join(UNALLOWED_URL_CHARS))}]")
+
+# Pattern to check if a component LOOKS like a standard web address.
+URL_START_PATTERN = re.compile(
+    r'^(https?://|ftp://|ft://|www\.|([a-zA-Z0-9_-]+\.)+[a-zA-Z0-9_-]+/)',
+    re.IGNORECASE
+)
+
+# ----------------------------------------------------------------------
+# --- Date Standardization Functions ---
+# ----------------------------------------------------------------------
+
 
 def standardize_date(date_str):
     """
@@ -118,6 +141,53 @@ def standardize_date(date_str):
     # ----------------------------------------------------
     return date_str, False
 
+# ----------------------------------------------------------------------
+# --- URL Cleaning Functions (New Logic) ---
+# ----------------------------------------------------------------------
+
+def is_valid_url_component(text: str) -> bool:
+    """
+    Checks if a piece of text adheres to a minimum standard for a URL or identifier,
+    using the stricter regex and filtering unallowed characters.
+    """
+    text = text.strip()
+    
+    # 1. Basic checks
+    if len(text) < 5 or '.' not in text:
+        return False
+    
+    # 2. Unallowed characters check
+    if any(c in text for c in UNALLOWED_URL_CHARS):
+        return False
+        
+    # 3. Must match the start pattern (protocol, www., or domain.tld/)
+    if not URL_START_PATTERN.match(text):
+        return False
+
+    return True
+
+def clean_url_by_splitting(potential_url_string: str) -> str:
+    """
+    Splits a potential URL string on unallowed characters and returns the first 
+    component that looks like a valid URL/domain.
+    """
+    if not potential_url_string:
+        return ""
+        
+    # 1. Split on any unallowed character
+    parts = URL_SPLIT_PATTERN.split(potential_url_string)
+    
+    # 2. Find the first component that passes validation
+    for p in parts:
+        if is_valid_url_component(p):
+            return p.strip()
+            
+    # 3. If no component is valid, return an empty string
+    return ""
+
+# ----------------------------------------------------------------------
+# --- Main Correction Function ---
+# ----------------------------------------------------------------------
 
 def correct_npl_mistakes(reference):
     """
@@ -127,7 +197,8 @@ def correct_npl_mistakes(reference):
     1. Title/Publisher swap heuristic.
     2. Corrects improperly formatted DOI URLs (e.g., DOI:10... to https://doi.org/10...).
     3. Completes bare DOI strings (e.g., 10.1016/... to https://doi.org/10.1016/...).
-    4. Standardizes publication date to ddmmyyyy format.
+    4. Cleans any remaining URL by splitting on unallowed characters.**
+    5. Standardizes publication date to ddmmyyyy format.
     """
     corrected = False
 
@@ -156,28 +227,48 @@ def correct_npl_mistakes(reference):
     
     if url:
         original_url = url
+        doi_corrected = False
         
         # 2. Correction: Fix 'doi:' or 'DOI:' prefix
         if url.lower().startswith("doi:"):
             # Remove 'doi:' (4 characters) and standardize
             doi_path = url[4:].strip()
             url = f"https://doi.org/{doi_path}"
-            corrected = True
+            doi_corrected = True
             
         # 3. Completion: Handle bare DOI strings (e.g., '10.1016/...')
         # Check if it starts with the standard DOI directory pattern ('10.') 
         # AND it hasn't been recognized as a standard URL or fixed in step 2.
         elif url.startswith("10.") and not url.lower().startswith("http"):
             url = f"https://doi.org/{url}"
-            corrected = True
+            doi_corrected = True
             
         # Apply the final corrected URL to the reference if a correction occurred
-        if corrected:
+        if doi_corrected:
             reference["url"] = url
-            if original_url != url:
-                if constants.terminal_feedback:
-                    print(f"  ~ CORRECTION: Fixed DOI URL: '{original_url}' -> '{url}'")
-    # --- Heuristic 3: Date Standardization (ddmmyyyy) ---
+            corrected = True
+            if constants.terminal_feedback:
+                print(f"  ~ CORRECTION: Fixed DOI URL: '{original_url}' -> '{url}'")
+
+    # ----------------------------------------------------------------
+    # --- Heuristic 4: Unallowed Character URL Splitting and Cleaning (NEW) ---
+    # ----------------------------------------------------------------
+    
+    current_url = reference.get("url")
+    if current_url:
+        original_url_for_split = current_url.strip()
+        cleaned_url = clean_url_by_splitting(original_url_for_split)
+        
+        if original_url_for_split != cleaned_url:
+            reference["url"] = cleaned_url
+            # If the URL was changed (either cleaned or discarded), mark as corrected
+            corrected = True 
+            if constants.terminal_feedback and cleaned_url:
+                print(f"  ~ CORRECTION: Cleaned URL via splitting: '{original_url_for_split}' -> '{cleaned_url}'")
+            elif constants.terminal_feedback and not cleaned_url and original_url_for_split:
+                print(f"  ~ CORRECTION: Discarded invalid URL: '{original_url_for_split}'")
+
+    # --- Heuristic 5: Date Standardization (ddmmyyyy) ---
     original_date_raw = reference.get("publication_date")
     original_date = original_date_raw.strip() if original_date_raw is not None else ""
     
@@ -186,7 +277,11 @@ def correct_npl_mistakes(reference):
         
         if success:
             reference["publication_date"] = transformed_date
+            # Check if date was actually changed to "ddmmyyyy" (from original format)
+            if original_date != transformed_date: 
+                corrected = True
         else:
             # Print a comment if transformation failed
             print(f"  ! WARNING: Date '{original_date}' could not be transformed to ddmmyyyy and was left as is.")
+
     return corrected
