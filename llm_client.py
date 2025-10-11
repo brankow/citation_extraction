@@ -122,6 +122,18 @@ def extract_ieee_references(text: str):
     matches = constants._IEEE_PATTERN.findall(text)
     return [m.upper() for m in matches]
 
+def clean_llm_response(llm_text: str) -> str:
+    if llm_text is None:
+        return ""
+    
+    return (
+        llm_text
+        .replace('["unknown"]', '[]')
+        .replace('["Unknown"]', '[]')
+        .replace('"unknown"', '""')
+        .replace('"Unknown"', '""')
+    )
+
 # --- Structured Extraction Functions ---
 
 def extract_npl_references(paragraph_text):
@@ -167,7 +179,10 @@ def extract_npl_references(paragraph_text):
         if llm_response and 'choices' in llm_response and llm_response['choices']:
             llm_text_raw = llm_response['choices'][0]['message']['content']
             llm_text = llm_text_raw if llm_text_raw is not None else "" 
-            return robust_json_extract(llm_text)
+            print (llm_text)
+            cleaned_text = clean_llm_response(llm_text)
+            print(cleaned_text)
+            return robust_json_extract(cleaned_text)
         else:
             return "[LLM Extraction Failed: Invalid response structure or no choices returned.]"
     except Exception as e:
