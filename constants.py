@@ -39,7 +39,7 @@ _IEEE_PATTERN = re.compile(
 # Year detection pattern (1900-2025)
 years_list = [str(y) for y in range(1900, current_year + 1)]
 YEAR_PATTERN = '|'.join(years_list)
-YEAR_REGEX = re.compile(rf'\b({YEAR_PATTERN})\b')
+YEAR_REGEX = re.compile(rf'\b({YEAR_PATTERN})(?!/)\b')
 
 # Genbank and biological database patterns
 GENBANK_REGEX = re.compile(r'\b(?:CAS|genbank|Genbank|Uniprot|Swissprot|PDB|RefSeq|NCBI)\b')
