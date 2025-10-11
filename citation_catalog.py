@@ -176,10 +176,10 @@ class CitationCatalog:
             nplcit = ET.SubElement(root, "nplcit")
             nplcit.set("id", citation["id"])
             nplcit.set("npl-type", citation["npl_type"])
-            nplcit.set("crossrefid", citation["crossrefid"])
             url_value = citation.get("url")
             if url_value:
                 nplcit.set("url", url_value)
+            nplcit.set("crossrefid", citation["crossrefid"])
             if citation["citation_type"] == "article":
                 self._build_article_xml(nplcit, citation)
             elif citation["citation_type"] == "online":
