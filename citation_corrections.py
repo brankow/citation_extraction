@@ -141,9 +141,7 @@ def standardize_date(date_str):
     # ----------------------------------------------------
     return date_str, False
 
-# ----------------------------------------------------------------------
-# --- URL Cleaning Functions (New Logic) ---
-# ----------------------------------------------------------------------
+# --- URL Cleaning Functions  ---
 
 def is_valid_url_component(text: str) -> bool:
     """
@@ -198,7 +196,8 @@ def correct_npl_mistakes(reference):
     2. Corrects improperly formatted DOI URLs (e.g., DOI:10... to https://doi.org/10...).
     3. Completes bare DOI strings (e.g., 10.1016/... to https://doi.org/10.1016/...).
     4. Cleans any remaining URL by splitting on unallowed characters.**
-    5. Standardizes publication date to ddmmyyyy format.
+    5. NEW: Clears title if it contains the single author's name.**
+    6. Standardizes publication date to ddmmyyyy format.
     """
     corrected = False
 
@@ -208,6 +207,10 @@ def correct_npl_mistakes(reference):
     title = title_raw.strip() if title_raw is not None else ""
     publisher_raw = reference.get("publisher")
     publisher = publisher_raw.strip() if publisher_raw is not None else ""
+    url_raw = reference.get("url")
+    url = url_raw.strip() if url_raw is not None else ""
+
+    # --- Heuristic 1: Title/Publisher Swap ---
     title_word_count = len(title.split())
 
     if title_word_count > 0 and title_word_count < 4 and not publisher:
@@ -221,9 +224,8 @@ def correct_npl_mistakes(reference):
             if constants.terminal_feedback:
                 print(f"  ~ CORRECTION: Swapped short title ('{title}') to publisher field.")
             corrected = True
+            title = ""  # Update local variable 
     # --- Heuristic 2 & 3: DOI URL Correction/Completion ---
-    url_raw = reference.get("url")
-    url = url_raw.strip() if url_raw is not None else ""
     
     if url:
         original_url = url
@@ -250,10 +252,7 @@ def correct_npl_mistakes(reference):
             if constants.terminal_feedback:
                 print(f"  ~ CORRECTION: Fixed DOI URL: '{original_url}' -> '{url}'")
 
-    # ----------------------------------------------------------------
-    # --- Heuristic 4: Unallowed Character URL Splitting and Cleaning (NEW) ---
-    # ----------------------------------------------------------------
-    
+    # --- Heuristic 4: Unallowed Character URL Splitting and Cleaning ---   
     current_url = reference.get("url")
     if current_url:
         original_url_for_split = current_url.strip()
@@ -268,7 +267,34 @@ def correct_npl_mistakes(reference):
             elif constants.terminal_feedback and not cleaned_url and original_url_for_split:
                 print(f"  ~ CORRECTION: Discarded invalid URL: '{original_url_for_split}'")
 
-    # --- Heuristic 5: Date Standardization (ddmmyyyy) ---
+    # --- Heuristic 5: Clear Title if it Contains Single Author ---
+    authors_list = reference.get("author") 
+
+    # Check 1: Must have exactly ONE author AND a title must exist
+    # AND the list must not be empty or None.
+    if authors_list and isinstance(authors_list, list) and len(authors_list) == 1 and title:
+        
+        # Schema confirms the item is a string, so we extract directly.
+        first_author_name = str(authors_list[0])
+
+        # Final cleanup and lowercase for comparison
+        author_name_clean = first_author_name.strip().lower()
+        title_clean = title.strip().lower()
+
+        # Check 2: Author name must be PRESENT ANYWHERE in the title (and must be at least 2 chars long)
+        if len(author_name_clean) >= 2 and author_name_clean in title_clean:
+            
+            reference["title"] = ""
+            corrected = True
+            
+            # Since the title local variable is used for Heuristic 1 checks, update it.
+            # This is technically unnecessary here as H5 runs after H1, but safe practice.
+            title = "" 
+            
+            if constants.terminal_feedback:
+                print(f"  ~ CORRECTION: Cleared title ('{title_raw}') because it contained the single author ('{author_name_clean}').")
+        
+    # --- Heuristic 6: Date Standardization (ddmmyyyy) ---
     original_date_raw = reference.get("publication_date")
     original_date = original_date_raw.strip() if original_date_raw is not None else ""
     
