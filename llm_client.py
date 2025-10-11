@@ -192,6 +192,31 @@ def extract_standard_references(paragraph_text, _3gpp_standards, _ieee_standards
     """
     Sends paragraph text to the LLM to extract standard references.
     """
+    # 1. Start building the dynamic user prompt
+    standards_list_section = []
+
+    # Conditionally include 3GPP standards
+    if _3gpp_standards and len(_3gpp_standards) > 0:
+        standards_list_section.append(
+            f"3GPP candidate standards: {json.dumps(_3gpp_standards, ensure_ascii=False)}"
+        )
+
+    # Conditionally include IEEE standards
+    if _ieee_standards and len(_ieee_standards) > 0:
+        standards_list_section.append(
+            f"IEEE candidate standards: {json.dumps(_ieee_standards, ensure_ascii=False)}"
+        )
+
+    # Determine the introductory sentence
+    if standards_list_section:
+        standards_intro = "The text may contain references to standards from the following lists:"
+        standards_list_text = "\n".join(standards_list_section)
+    else:
+        # If both lists are empty, tell the LLM explicitly not to look for standards.
+        standards_intro = "No specific standard lists were provided for extraction."
+        standards_list_text = "Therefore, you must return an empty 'references' array unless a very generic standard is explicitly mentioned and fits the schema."
+        
+    
     system_prompt = """
     You are a highly deterministic data extraction engine.
     Your ONLY task is to output a single valid JSON object that conforms EXACTLY to the provided JSON Schema.
@@ -203,10 +228,8 @@ def extract_standard_references(paragraph_text, _3gpp_standards, _ieee_standards
     """
 
     user_prompt = f"""
-    The text may contain references to standards from the following lists:
-
-    3GPP candidate standards: {json.dumps(_3gpp_standards, ensure_ascii=False)}
-    IEEE candidate standards: {json.dumps(_ieee_standards, ensure_ascii=False)}
+    {standards_intro}
+    {standards_list_text}
 
     If any of these standards are indeed mentioned in the text, extract them as structured references.
 
