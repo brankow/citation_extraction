@@ -177,7 +177,9 @@ class CitationCatalog:
             nplcit.set("id", citation["id"])
             nplcit.set("npl-type", citation["npl_type"])
             nplcit.set("crossrefid", citation["crossrefid"])
-            
+            url_value = citation.get("url")
+            if url_value:
+                nplcit.set("url", url_value)
             if citation["citation_type"] == "article":
                 self._build_article_xml(nplcit, citation)
             elif citation["citation_type"] == "online":
@@ -233,10 +235,6 @@ class CitationCatalog:
             else:
                 ppf.text = pages
 
-        # Url
-        if citation.get("url"):
-            url_elem = ET.SubElement(article, "url")
-            url_elem.text = citation["url"]
     
     def _build_cas_xml(self, parent, citation):
         """Build XML structure for CAS number citations (npl-type='s')."""
@@ -251,6 +249,7 @@ class CitationCatalog:
         # The CAS number is placed here in the <ino> tag
         ino = ET.SubElement(serial, "ino")
         ino.text = citation.get("ino", "") # Uses the 'ino' field from the unified structure
+
     def _build_online_xml(self, parent, citation):
         """Build XML structure for online/accession citations (e.g., Uniprot - npl-type='e')."""
         online = ET.SubElement(parent, "online")
