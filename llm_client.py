@@ -179,9 +179,9 @@ def extract_npl_references(paragraph_text):
         if llm_response and 'choices' in llm_response and llm_response['choices']:
             llm_text_raw = llm_response['choices'][0]['message']['content']
             llm_text = llm_text_raw if llm_text_raw is not None else "" 
-            print (llm_text)
+            # print (llm_text)
             cleaned_text = clean_llm_response(llm_text)
-            print(cleaned_text)
+            # print(cleaned_text)
             return robust_json_extract(cleaned_text)
         else:
             return "[LLM Extraction Failed: Invalid response structure or no choices returned.]"

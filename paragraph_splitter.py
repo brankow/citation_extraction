@@ -1,8 +1,6 @@
 import re
 from typing import List, Callable, Tuple
 
-# --- Configuration ---
-THRESHOLD = 1000  # maximum characters per paragraph before splitting
 # --- Consolidated Patent Regex Definitions ---
 
 # 1. Define the core patent ID matching logic ONCE
@@ -27,8 +25,7 @@ PATENT_ONLY_START_PATTERN = re.compile(
     r'^\s*(' + PATENT_ID_REGEX + r')',       # Group 1: The entire patent ID block (at string start)
     re.IGNORECASE | re.VERBOSE)
 
-# List of all available split functions, ordered by preference.
-SPLIT_METHODS: List[Callable[[str], List[str]]] = []
+
 
 def remove_tags(text: str) -> str:
     """Remove all XML/HTML tags from text."""
@@ -50,6 +47,27 @@ def substitute_patent_numbers(text: str) -> str:
 
 # ----------------------------------------------------------------------
 # --- Split Functions ---
+def split_paragraph_on_patent_number(text: str) -> List[str]:
+    """
+    Splits the text immediately before a patent number.
+    """
+    parts = []
+    last_index = 0
+    
+    for m in PATENT_SPLIT_PATTERN.finditer(text):
+        split_index = m.start(1) # Start of the separator (Group 1: [,;.\s])
+        
+        part_before = text[last_index:split_index].strip()
+        if part_before:
+            parts.append(part_before)
+        
+        last_index = split_index # Start the next part from the separator
+        
+    remainder = text[last_index:].strip()
+    if remainder:
+        parts.append(remainder)
+        
+    return [p for p in parts if p] if len(parts) > 1 else [text]
 def split_paragraph_on_dot_double_newline(text: str) -> List[str]:
     """Primary split: split on dot followed by two or more newlines (paragraph break)"""
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -59,45 +77,12 @@ def split_paragraph_on_dot_double_newline(text: str) -> List[str]:
         p = p.strip()
         if not p:
             continue
-        if not p.endswith('.') and not p.endswith('?') and not p.endswith('!'):
+        if not p.endswith(('.', '?', '!')):
             p += '.'
         parts.append(p)
     return parts
 
-def split_paragraph_on_patent_number(text: str) -> List[str]:
-    """
-    Splits the text immediately before a patent number (WO/US).
-    The patent number itself starts the new part.
-    """
-    
-    parts = []
-    last_index = 0
-    
-    # Use the compiled pattern from above (assuming it's defined globally in this file)
-    for m in PATENT_SPLIT_PATTERN.finditer(text):
-        
-        # m.start(1) is the start of the separator (Group 1: [,;.\s])
-        split_index = m.start(1) 
-        
-        # 1. Append the text BEFORE the separator/patent
-        part_before = text[last_index:split_index].strip()
-        if part_before:
-            parts.append(part_before)
-        
-        # 2. The rest of the text starts with the separator and the patent number
-        last_index = split_index # Start the next part from the separator
-        
-    # Append the final remaining text
-    remainder = text[last_index:].strip()
-    if remainder:
-        parts.append(remainder)
-        
-    if len(parts) > 1:
-        return [p for p in parts if p]
-        
-    return [text]
 
-SPLIT_METHODS.append(split_paragraph_on_patent_number)
 
 def split_paragraph_on_punctuation_dash(text: str) -> List[str]:
     """Secondary split: punctuation (. , : ;) followed by newline + dash"""
@@ -112,9 +97,8 @@ def split_paragraph_on_punctuation_dash(text: str) -> List[str]:
     remainder = normalized[last_index:].strip()
     if remainder:
         parts.append(remainder)
-    return parts
+    return [p for p in parts if p] if len(parts) > 1 else [text]
 
-SPLIT_METHODS.append(split_paragraph_on_punctuation_dash)
 
 def split_paragraph_on_arrow(text: str) -> List[str]:
     """Tertiary/fallback split: split on ' -->'"""
@@ -134,12 +118,7 @@ def split_paragraph_on_arrow(text: str) -> List[str]:
     if remainder:
         parts.append(remainder)
         
-    if len(parts) > 1:
-        return [p for p in parts if p]
-        
-    return [text]
-
-SPLIT_METHODS.append(split_paragraph_on_arrow)
+    return [p for p in parts if p] if len(parts) > 1 else [text]
 
 
 def split_paragraph_on_z_b(text: str) -> List[str]:
@@ -154,9 +133,9 @@ def split_paragraph_on_z_b(text: str) -> List[str]:
     remainder = text[last_index:].strip()
     if remainder:
         parts.append(remainder)
-    return parts
+    return [p for p in parts if p] if len(parts) > 1 else [text]
 
-SPLIT_METHODS.append(split_paragraph_on_z_b)
+
 
 
 def split_paragraph_on_or_newline_dash(text: str) -> List[str]:
@@ -172,9 +151,7 @@ def split_paragraph_on_or_newline_dash(text: str) -> List[str]:
     remainder = normalized[last_index:].strip()
     if remainder:
         parts.append(remainder)
-    return parts
-
-SPLIT_METHODS.append(split_paragraph_on_or_newline_dash)
+    return [p for p in parts if p] if len(parts) > 1 else [text]
 
 
 def split_paragraph_on_punctuation_list_item(text: str) -> List[str]:
@@ -190,9 +167,7 @@ def split_paragraph_on_punctuation_list_item(text: str) -> List[str]:
     remainder = normalized[last_index:].strip()
     if remainder:
         parts.append(remainder)
-    return parts
-
-SPLIT_METHODS.append(split_paragraph_on_punctuation_list_item)
+    return [p for p in parts if p] if len(parts) > 1 else [text]
 
 
 def split_paragraph_on_punctuation_letter_bracket(text: str) -> List[str]:
@@ -208,9 +183,7 @@ def split_paragraph_on_punctuation_letter_bracket(text: str) -> List[str]:
     remainder = normalized[last_index:].strip()
     if remainder:
         parts.append(remainder)
-    return parts
-
-SPLIT_METHODS.append(split_paragraph_on_punctuation_letter_bracket)
+    return [p for p in parts if p] if len(parts) > 1 else [text]
 
 
 def split_paragraph_on_figure_enumeration(text: str) -> List[str]:
@@ -227,101 +200,74 @@ def split_paragraph_on_figure_enumeration(text: str) -> List[str]:
     remainder = normalized[last_index:].strip()
     if remainder:
         parts.append(remainder)
-    return parts
+    return [p for p in parts if p] if len(parts) > 1 else [text]
 
-SPLIT_METHODS.append(split_paragraph_on_figure_enumeration)
+# --- Ordered List of all Split Methods ---
+FINAL_SPLIT_ORDER: List[Callable[[str], List[str]]] = [
+    split_paragraph_on_patent_number,
+    split_paragraph_on_dot_double_newline,
+    split_paragraph_on_punctuation_dash,
+    split_paragraph_on_figure_enumeration,
+    split_paragraph_on_punctuation_list_item,
+    split_paragraph_on_punctuation_letter_bracket,
+    split_paragraph_on_or_newline_dash,
+    split_paragraph_on_z_b,
+    split_paragraph_on_arrow,
+]
+# ----------------------------------------------------------------------
+# --- Core Unconditional Cascading Splitter ---
 
+def cascading_split(part: str, split_methods: List[Callable[[str], List[str]]]) -> List[str]:
+    """
+    Applies split methods sequentially and recursively, UNCONDITIONALLY, 
+    until all methods have been tried.
+    """
+    # Base case 1: Empty part
+    if not part.strip():
+        return []
 
-# --- Core Recursive Logic ---
-
-def recursively_split_long_part(part: str, split_methods: List[Callable[[str], List[str]]]) -> Tuple[List[str], bool]:
-    """Recursively applies fallback split methods to a text part."""
-    global THRESHOLD # Use the global threshold
+    # Base case 2: No more split methods left
+    if not split_methods:
+        return [part]
     
-    if len(part) <= THRESHOLD:
-        return [part], False
+    current_split_func = split_methods[0]
+    remaining_split_methods = split_methods[1:]
+    
+    # 1. Attempt the current split
+    sub_parts = current_split_func(part)
 
-    for split_func in split_methods:
-        sub_parts = split_func(part)
+    # 2. If the split was successful (yielded more than 1 part)
+    if len(sub_parts) > 1:
+        final_parts = []
+        # Recursively apply the *remaining* methods to the new sub-parts
+        for sub_part in sub_parts:
+            final_parts.extend(cascading_split(sub_part, remaining_split_methods))
+        return final_parts
+    else:
+        # 3. If the current split failed, try the *next* method recursively on the original part.
+        return cascading_split(part, remaining_split_methods)
 
-        if len(sub_parts) > 1:
-            final_parts = []
-            successful_split = True
-            
-            for sub_part in sub_parts:
-                recursed_parts, _ = recursively_split_long_part(sub_part, split_methods)
-                final_parts.extend(recursed_parts)
-                
-            return final_parts, successful_split
-
-    return [part], False
-
-
-# --- Main Exportable Splitter Function (Refactored for unconditional split) ---
+# --- Main Exportable Splitter Function ---
 
 def split_and_clean_paragraph(text: str) -> List[str]:
     """
-    Main function to split a single raw paragraph string, enforcing patent splitting 
-    unconditionally, and then applying length-based recursive splitting.
-    
-    NOTE: This function performs structural splitting only. Patent number substitution
-    is handled by the caller function (extract_paragraphs) right before an LLM call.
+    Main function to split a single raw paragraph string using all defined split methods 
+    in a cascading and UNCONDITIONAL manner.
     
     Args:
-        text (str): The raw paragraph string (assumed to be already stripped of XML tags).
+        text (str): The raw paragraph string.
         
     Returns:
         List[str]: A list of split sub-paragraphs.
     """
     if text is None:
         return []
+    
     clean_text = text.strip()
-    length = len(clean_text)
-    
-    # 1. UNCONDITIONAL PATENT SPLIT
-    # The patent splitter runs regardless of length.
-    patent_split_parts = split_paragraph_on_patent_number(clean_text)
-    
-    final_parts = []
 
-    # 2. LENGTH-BASED AND RECURSIVE SPLITTING on the results of the patent split
-    for part in patent_split_parts:
-        part_length = len(part)
+    # Apply the cascading split using the final, ordered list of split methods
+    final_parts = cascading_split(clean_text, FINAL_SPLIT_ORDER)
 
-        if part_length <= THRESHOLD:
-            final_parts.append(part)
-            continue 
-
-        # Start recursive splitting for long parts
-        
-        # 2a. Primary split: dot + double newline
-        sub_parts = split_paragraph_on_dot_double_newline(part)
-        
-        was_recursively_split = False
-        recursed_final_parts = []
-
-        # 2b. Secondary/Recursive check on sub-parts
-        for sub_part in sub_parts:
-            # Recursively split (uses SPLIT_METHODS, which contains other splitters)
-            parts_from_recursion, part_was_split = recursively_split_long_part(sub_part, SPLIT_METHODS)
-            recursed_final_parts.extend(parts_from_recursion)
-            if part_was_split:
-                was_recursively_split = True
-        
-        # 2c. If dot split failed, apply recursive fallbacks to the whole long part
-        if not was_recursively_split and len(recursed_final_parts) <= 1:
-            # Only try recursion if the original part was long
-            if part_length > THRESHOLD:
-                recursed_final_parts, was_recursively_split = recursively_split_long_part(part, SPLIT_METHODS)
-        
-        
-        # Check for failure to split a long part.
-        if part_length > THRESHOLD and not was_recursively_split and len(recursed_final_parts) <= 1:
-             # If splitting failed, just return the single large part. The caller will log the error.
-             final_parts.append(part)
-        else:
-            # If splitting was successful or the part was split by dot-double-newline
-            final_parts.extend(recursed_final_parts)
 
     # Filter out empty strings
     return [p for p in final_parts if p.strip()]
