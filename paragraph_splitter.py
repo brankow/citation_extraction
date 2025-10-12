@@ -25,6 +25,9 @@ PATENT_ONLY_START_PATTERN = re.compile(
     r'^\s*(' + PATENT_ID_REGEX + r')',       # Group 1: The entire patent ID block (at string start)
     re.IGNORECASE | re.VERBOSE)
 
+PATENT_FINDER_PATTERN = re.compile(
+    PATENT_ID_REGEX,  # Just the IDs
+    re.IGNORECASE | re.VERBOSE)
 
 
 def remove_tags(text: str) -> str:
@@ -49,25 +52,42 @@ def substitute_patent_numbers(text: str) -> str:
 # --- Split Functions ---
 def split_paragraph_on_patent_number(text: str) -> List[str]:
     """
-    Splits the text immediately before a patent number.
+    Splits the text immediately BEFORE a patent reference and DISCARDS the patent
+    reference and any preceding separator/whitespace from the resulting segments.
     """
     parts = []
     last_index = 0
     
-    for m in PATENT_SPLIT_PATTERN.finditer(text):
-        split_index = m.start(1) # Start of the separator (Group 1: [,;.\s])
+    for m in PATENT_FINDER_PATTERN.finditer(text):
         
+        # 1. Determine the split point: It should be before the patent ID
+        # We search backward for the nearest meaningful separator (., ; or end of word)
+        
+        # Split point is the start of the patent match (m.start())
+        split_index = m.start()
+        
+        # Get the part BEFORE the patent reference
         part_before = text[last_index:split_index].strip()
+        
+        # Only add the part if it contains actual content
         if part_before:
             parts.append(part_before)
         
-        last_index = split_index # Start the next part from the separator
+        # 2. Update last_index to the END of the entire match (m.end()).
+        # This is the critical step: it skips over the entire patent ID,
+        # effectively consuming and discarding it from the rest of the processing.
+        last_index = m.end() 
         
     remainder = text[last_index:].strip()
     if remainder:
         parts.append(remainder)
         
+    # The split might have created just one part if the patent was the very first thing
+    # or the only thing. We return the splits if multiple segments were created.
+    # Note: We rely on the rest of the cascading split logic to handle parts cleanly.
+        
     return [p for p in parts if p] if len(parts) > 1 else [text]
+
 def split_paragraph_on_dot_double_newline(text: str) -> List[str]:
     """Primary split: split on dot followed by two or more newlines (paragraph break)"""
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -252,13 +272,7 @@ def cascading_split(part: str, split_methods: List[Callable[[str], List[str]]]) 
 def split_and_clean_paragraph(text: str) -> List[str]:
     """
     Main function to split a single raw paragraph string using all defined split methods 
-    in a cascading and UNCONDITIONAL manner.
-    
-    Args:
-        text (str): The raw paragraph string.
-        
-    Returns:
-        List[str]: A list of split sub-paragraphs.
+    in a cascading and UNCONDITIONAL manner, and then clean patents.
     """
     if text is None:
         return []
@@ -268,6 +282,8 @@ def split_and_clean_paragraph(text: str) -> List[str]:
     # Apply the cascading split using the final, ordered list of split methods
     final_parts = cascading_split(clean_text, FINAL_SPLIT_ORDER)
 
+    # NEW STEP: Clean up any remaining patent numbers using your existing substitution logic
+    final_parts_cleaned = [substitute_patent_numbers(p) for p in final_parts]
 
     # Filter out empty strings
-    return [p for p in final_parts if p.strip()]
+    return [p for p in final_parts_cleaned if p.strip()]
