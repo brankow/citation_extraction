@@ -151,6 +151,12 @@ def process_xml_content(xml_text: str) -> str:
                                         print(f"  ⚠ Skipping invalid accession entry: {acc}")
                                     continue 
 
+                                if acc_id == "None":
+                                    if constants.terminal_feedback:
+                                        print(f"  ⚠ Skipping accession with id 'None': {acc}")
+                                    continue
+                                    
+
                                 acc_type = acc.get("type", "").strip()
                                 acc_id = acc.get("id", "").strip()
 

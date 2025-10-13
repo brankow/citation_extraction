@@ -19,7 +19,7 @@ MAX_RETRIES = constants.MAX_RETRIES
 INITIAL_DELAY = constants.INITIAL_DELAY
 
 FORMULA_REGEX = re.compile(
-    r'\b[a-z0-9\-\(\)\[\]\{\}]{25,}\b',
+    r'\b[a-z0-9\-\(\)\[\]\{\}]{20,}\b',
     re.IGNORECASE  # Ensures matching works regardless of case (A-Z or a-z)
 )
 
