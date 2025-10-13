@@ -3,8 +3,7 @@ from datetime import datetime
 
 # --- LM Studio Configuration ---
 # NOTE: This configuration targets a local LLM server (like LM Studio).
-LM_STUDIO_URL = "http://localhost:1234/v1/chat/completions"
-# Set this to the name of the model you have loaded in LM Studio.
+LM_STUDIO_URL = "http://localhost:1234/v1/chat/completions" # Set this to the name of the model you have loaded in LM Studio.
 # MODEL_NAME = "qwen/qwen3-1.7b" 
 # MODEL_NAME = "meta-llama-3-8b-instruct"
 MODEL_NAME = "meta-llama-3.1-8b-instruct"
@@ -42,7 +41,8 @@ YEAR_PATTERN = '|'.join(years_list)
 YEAR_REGEX = re.compile(rf'\b({YEAR_PATTERN})(?!/)\b')
 
 # Genbank and biological database patterns
-GENBANK_REGEX = re.compile(r'\b(?:CAS|genbank|Genbank|Uniprot|Swissprot|PDB|RefSeq|NCBI)\b')
+GENBANK_REGEX = re.compile(r'\b(?:CAS|genbank|GenBank|Uniprot|Swissprot|PDB|RefSeq|NCBI|(GCA|GCF)_\d{9}\.\d+)')
+ASSEMBLY_ACCESSION_REGEX = re.compile(r'(GCA|GCF)_\d{9}\.\d+')
 
 # DOI pattern
 DOI_REGEX = re.compile(

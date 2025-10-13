@@ -7,11 +7,23 @@ from typing import List, Callable, Tuple
 PATENT_ID_REGEX = r'''
     (WO\s?\d{2,4}\/\d+[A-Z0-9]{1,2}?)   # WO patents
     |
+    (PCT\/[A-Z]{2}\d{2,4}\/\d{3,7})       # PCT/EP2025/056529
+    |
     (EP\s?\d+[\s-]?\d+[\s-]?\d+[A-Z0-9]{1,2}?) # EP patents
     |
-    (US\s?\d{2}\/\d+)                   # Old US format
+    (U\.?S\.?\s?\d{2}\/\d+(\s?[A-Z]\d?)?)                   # Old US application format
     |
-    (US[\s-]?[A-Z]{0,2}\s?\d{4}[-\/]?\d+) # New US format
+    (U\.?S\.?\s?[0-9,]{7,}(\s?[A-Z]\d?)?)                   # Old US application format
+    |
+    (U\.?S\.?[\s-]?[A-Z]{0,2}\s?\d{4}[-\/]?\d+(\s?[A-Z]\d?)?) # New US format
+    |
+    (JP[\s-]?[A-B]{0,1}\s?\d{4}[-\/]?\d+(\s?[A-Z]\d?)?) # New JP format
+    |
+    (JP[\s-]?[A-B]{0,1}\s?[HS]\d{1,2}[-\/]?\d+(\s?[A-Z]\d?)?) # Old JP format
+    |
+    (CN\d{6,}(\s?[A-Z]\d?)?)
+    |
+    (GB[\s-]?[A-Z]{0,1}\s?[0-9\-]{6,}(\s?[A-Z]\d?)?x)
 ''' 
 
 # 2. Build the Global SPLIT Pattern (for splitting and mid-string substitution)
@@ -28,6 +40,18 @@ PATENT_ONLY_START_PATTERN = re.compile(
 PATENT_FINDER_PATTERN = re.compile(
     PATENT_ID_REGEX,  # Just the IDs
     re.IGNORECASE | re.VERBOSE)
+
+
+# The pattern splits on: [., :, ;] + space + (For|As an) + space + example
+# Breakdown of the pattern:
+# r'([\.\:\;])'           : Group 1: Matches and captures one of the punctuation marks.
+# r'(\s+)'               : Group 2: Matches and captures one or more spaces.
+# r'((?:for|as\san)\sexample)': Group 3: Matches and captures the entire phrase.
+SPLIT_EXAMPLE_REGEX = re.compile(
+    r'([\.\:\;])(\s+)((?:for|as\san)\sexample)', 
+    re.IGNORECASE # Use IGNORECASE flag for case-insensitive matching
+)
+
 
 
 def remove_tags(text: str) -> str:
@@ -175,9 +199,9 @@ def split_paragraph_on_or_newline_dash(text: str) -> List[str]:
 
 
 def split_paragraph_on_punctuation_list_item(text: str) -> List[str]:
-    """Split: punctuation + newline + 1-2 digits + optional bracket/dot"""
+    """Split: punctuation + newline + 1-2 digits + optional bracket/dot + space"""
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    pattern = r'([.,:;])\n(\(?[0-9]{1,2}\)?\.?)'
+    pattern = r'([.,:;])\n(\(?[0-9]{1,2}\)?\.?\s)'
     parts = []
     last_index = 0
     for m in re.finditer(pattern, normalized):
@@ -189,6 +213,70 @@ def split_paragraph_on_punctuation_list_item(text: str) -> List[str]:
         parts.append(remainder)
     return [p for p in parts if p] if len(parts) > 1 else [text]
 
+def split_by_specific_example_phrase(text: str) -> list[str]:
+    """
+    Splits a text string into parts based on a specific punctuation and phrase
+    combination: [., :, ;] + space + (For|As an) + space + example.
+    
+    The splitter keeps the dividing punctuation with the first part and the 
+    phrase with the second part.
+    """
+    # Regex breakdown:
+    # 1. ([\.\:\;])  : Capture group 1: Matches and captures one of the required punctuation marks (., :, ;).
+    # 2. (\s+)      : Capture group 2: Matches and captures one or more spaces. (Ensures space is present)
+    # 3. ((?:For|As\san)\sexample) : Capture group 3: Matches and captures the entire phrase 
+    #                                (e.g., "For example", "As an example").
+    #                                (?:...) is a non-capturing group for the 'For|As\san' alternation.
+    # 4. re.IGNORECASE: Makes the match case-insensitive (e.g., "for example" works).
+    
+    # The whole pattern must be non-greedy to work correctly with re.split:
+    # re.split keeps the content of any capture groups as split delimiters.
+    # We capture the punctuation, the space, and the phrase so we can reconstruct the sentences.
+    parts = SPLIT_EXAMPLE_REGEX.split(text)
+    
+    # The re.split result will look like: 
+    # [Start_Text, Punctuation, Space, Phrase, Middle_Text, Punctuation, Space, Phrase, End_Text]
+    
+    cleaned_parts = []
+    
+    # The first element is always text, not a delimiter
+    if parts:
+        current_part = parts[0]
+        
+        # Iterate over the delimiters (which start at index 1) in chunks of 3
+        for i in range(1, len(parts), 4):
+            # Check if we have the full chunk (Punctuation, Space, Phrase, Next_Text)
+            if i + 3 <= len(parts):
+                
+                # Delimiter components
+                punctuation = parts[i]
+                space_before_phrase = parts[i+1] # The space after the punctuation
+                phrase = parts[i+2]
+                next_text = parts[i+3]
+                
+                # 1. Complete the current part (A) by appending the punctuation and space
+                # This puts the delimiter (., :, ;) with the first sentence.
+                # Example: "Sentence 1." + " "
+                part_a = current_part + punctuation
+                
+                # Append Part A
+                if part_a.strip():
+                    cleaned_parts.append(part_a.strip())
+                
+                # 2. Start the next part (B) with the phrase and leading space
+                # This puts the rest of the delimiter ( " For example" ) with the second sentence.
+                # Example: " For example" + " Sentence 2."
+                current_part = space_before_phrase + phrase + next_text
+            else:
+                # If the split ended with a delimiter but no text, append the 
+                # remaining current_part and break. (Highly unlikely with this pattern)
+                break 
+
+        # Append the final accumulated part
+        if current_part.strip():
+            cleaned_parts.append(current_part.strip())
+            
+    return cleaned_parts
 
 def split_paragraph_on_punctuation_letter_bracket(text: str) -> List[str]:
     """Split: punctuation + newline + letter + ')'"""
@@ -233,6 +321,7 @@ FINAL_SPLIT_ORDER: List[Callable[[str], List[str]]] = [
     split_paragraph_on_or_newline_dash,
     split_paragraph_on_z_b,
     split_paragraph_on_arrow,
+    split_by_specific_example_phrase
 ]
 # ----------------------------------------------------------------------
 # --- Core Unconditional Cascading Splitter ---

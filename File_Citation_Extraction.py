@@ -116,6 +116,10 @@ def extract_paragraphs(file_path):
 
                     # --- Step 5a: NPL Reference Extraction  ---
                     if contains_year or contains_doi:
+                        if len(current_text_to_process) < 20:
+                            if constants.terminal_feedback:
+                                 print(f"[{part_num}] SKIPPED LLM CALL: Length {len(current_text_to_process)} < 20 chars.")
+                            continue # Skip the rest of the loop iteration
                         if constants.terminal_feedback:
                             print(f"[{part_num}] Extracting NPL references...")
 

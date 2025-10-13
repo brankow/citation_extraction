@@ -63,6 +63,30 @@ def should_skip_npl_reference(ref: dict) -> bool:
     )
 
     # --- FILTERING LOGIC ---
+     # Condition 10: Filter out Genes.      
+    if publisher_has_content:
+        if constants.ASSEMBLY_ACCESSION_REGEX.search(publisher):
+            if constants.terminal_feedback:
+                print(f"  - Skipping NPL reference (Condition 10: Gene in Publisher): {publisher}")
+            return True # Skip this reference
+    if title_has_content:
+        if constants.ASSEMBLY_ACCESSION_REGEX.search(title):
+            if constants.terminal_feedback:
+                print(f"  - Skipping NPL reference (Condition 10: Gene in Title): {title}")
+            return True # Skip this reference
+        
+    # Condition 9: Filter out patent citations based on 'patent' in publisher.      
+    if publisher_has_content:
+        if "patent" in publisher.lower() or "U.S. Serial" in publisher:
+            if constants.terminal_feedback:
+                print(f"  - Skipping NPL reference (Condition 9: Patent in Publisher): {publisher}")
+            return True # Skip this reference
+    if title_has_content:
+        if "U.S. Serial" in title or ("patent" in title.lower() and not ("non-patent" in title.lower() or "non patent" in title.lower())):
+            if constants.terminal_feedback:
+                print(f"  - Skipping NPL reference (Condition 9: Patent in Title): {title}")
+            return True # Skip this reference
+        
     # Condition 8: Filter out citations with 3GPP as date.  
     is_standards_date = (
         date_has_content and 
