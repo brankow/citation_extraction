@@ -101,6 +101,7 @@ def extract_paragraphs(file_path):
                 # Filtering Condition 4: Contains doi link
 
                 contains_doi = bool(constants.DOI_REGEX.search(current_text_to_process))
+                contains_volume = bool(constants.VOLUME_REGEX.search(current_text_to_process))
 
                 # Filtering Condition 5: Contains standard names like 3GPP, IEEE, ISO, W3C
                 _3gpp_standards = extract_3gpp_references(current_text_to_process)
@@ -110,16 +111,17 @@ def extract_paragraphs(file_path):
 
 
                 # Process if AT LEAST ONE condition is met
-                if contains_year or contains_nplcit or contains_genbank or contains_doi or contains_standards:
+                if contains_year or contains_nplcit or contains_genbank or contains_doi or contains_volume or contains_standards:
                     paragraphs_found += 1
                     
 
                     # --- Step 5a: NPL Reference Extraction  ---
-                    if contains_year or contains_doi:
+                    if contains_year or contains_doi or contains_volume:
                         if len(current_text_to_process) < 20:
                             if constants.terminal_feedback:
                                  print(f"[{part_num}] SKIPPED LLM CALL: Length {len(current_text_to_process)} < 20 chars.")
                             continue # Skip the rest of the loop iteration
+                        
                         if constants.terminal_feedback:
                             print(f"[{part_num}] Extracting NPL references...")
 

@@ -14,6 +14,8 @@ class CitationCatalog:
         self._accession_counter = 1 # <-- Accession and Standard counters not used but kept for clarity
         self._standard_counter = 1 # <-- They rely on the shared _npl_counter for XML ID generation
         self._npl_unique_keys = set()
+        self._accession_unique_keys = set()
+        self._standard_unique_keys = set()  
 
     @staticmethod 
     def _safe_str(value):
@@ -81,6 +83,21 @@ class CitationCatalog:
         """
 
         accession_type = accession_data.get("type", "").upper()
+        accession_id = CitationCatalog._safe_str(accession_data.get("id", ""))
+        
+        # 0. Create the unique key for this accession (type + ID)
+        citation_key = (
+            accession_type.lower().strip(),
+            accession_id.lower().strip()
+        )
+        
+        # 0a. Check for GLOBAL DUPLICATE
+        if citation_key in self._accession_unique_keys:
+            # Found a duplicate already in the catalog, do not add.
+            return None
+        
+        # 0b. Add the key to the global set before adding the citation
+        self._accession_unique_keys.add(citation_key)
         
         # Determine npl-type and citation_type based on 'type'
         if accession_type == "CAS":
@@ -129,6 +146,23 @@ class CitationCatalog:
         Add a standard reference to the catalog.
         Maps from LLM schema to unified format.
         """
+        # 0. Create the unique key for this standard
+        accession_number = CitationCatalog._safe_str(standard_data.get("accession_number", ""))
+        version = CitationCatalog._safe_str(standard_data.get("version", ""))
+        
+        # Use combination of body, accession number, and version as unique identifier
+        citation_key = (
+            accession_number.lower().strip(),
+            version.lower().strip()
+        )
+        
+        # 0a. Check for GLOBAL DUPLICATE
+        if citation_key in self._standard_unique_keys:
+            # Found a duplicate already in the catalog, do not add.
+            return None
+        
+        # 0b. Add the key to the global set before adding the citation
+        self._standard_unique_keys.add(citation_key)
         # 1. Capture the current sequential number
         current_seq_num = self._npl_counter
         
@@ -148,8 +182,8 @@ class CitationCatalog:
             "citation_type": citation_type,
             "title": standard_data.get("title", ""),
             "standardisation_body": standard_data.get("standardisation_body", ""), # Part of <sertitle>
-            "accession_number": standard_data.get("accession_number", ""), # Part of <sertitle>
-            "version": standard_data.get("version", ""), # Part of <sertitle>
+            "accession_number": accession_number,
+            "version": version, # Part of <sertitle>
             "publication_date": standard_data.get("publication_date", ""), # Not mapped in target example but kept for completeness
             "url": standard_data.get("url", "") # Not mapped in target example but kept for completeness
         }

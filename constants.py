@@ -1,6 +1,9 @@
 import re
 from datetime import datetime
 
+terminal_feedback = False  # Set to True to enable terminal feedback 
+
+
 # --- LM Studio Configuration ---
 # NOTE: This configuration targets a local LLM server (like LM Studio).
 LM_STUDIO_URL = "http://localhost:1234/v1/chat/completions" # Set this to the name of the model you have loaded in LM Studio.
@@ -13,7 +16,6 @@ MODEL_NAME = "meta-llama-3.1-8b-instruct"
 MAX_RETRIES = 3
 INITIAL_DELAY = 1 # seconds
 current_year = datetime.now().year
-terminal_feedback = False  # Set to True to enable terminal feedback 
 
 # --- COMPILED REGULAR EXPRESSIONS (for performance) ---
 STANDARDS_BODIES_REGEX = re.compile(r'\b(?:3GPP|IEEE)\b', re.IGNORECASE) 
@@ -41,7 +43,7 @@ YEAR_PATTERN = '|'.join(years_list)
 YEAR_REGEX = re.compile(rf'\b({YEAR_PATTERN})(?!/)\b')
 
 # Genbank and biological database patterns
-GENBANK_REGEX = re.compile(r'\b(?:CAS|genbank|GenBank|Uniprot|Swissprot|PDB|RefSeq|NCBI|(GCA|GCF)_\d{9}\.\d+)')
+GENBANK_REGEX = re.compile(r'\b(?:\bCAS\b|genbank|GenBank|Uniprot|Swissprot|PDB|RefSeq|NCBI|(GCA|GCF)_\d{9}\.\d+)')
 ASSEMBLY_ACCESSION_REGEX = re.compile(r'(GCA|GCF)_\d{9}\.\d+')
 
 # DOI pattern
@@ -52,6 +54,8 @@ DOI_REGEX = re.compile(
     r')\b',
     re.IGNORECASE
 )
+
+VOLUME_REGEX =  re.compile(r'(?i)(?:\b|\()vol(?:ume)?[ .:]?\d+\b')
 
 # JSON cleaning patterns
 JSON_MARKDOWN_START = re.compile(r'^\s*```json\s*', flags=re.IGNORECASE | re.MULTILINE)
