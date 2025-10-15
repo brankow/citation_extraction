@@ -114,7 +114,6 @@ def extract_paragraphs(file_path):
                 # Process if AT LEAST ONE condition is met
                 if contains_year or contains_nplcit or contains_genbank or contains_cas or contains_pdb or contains_doi or contains_volume or contains_standards:
                     paragraphs_found += 1
-                    
 
                     # --- Step 5a: NPL Reference Extraction  ---
                     if contains_year or contains_doi or contains_volume:
@@ -265,7 +264,8 @@ def extract_paragraphs(file_path):
 
         # 6. Save the catalog to a new file
         if catalog.get_all_citations():
-            catalog.print_summary()
+            if constants.terminal_feedback:
+                catalog.print_summary()
             # 1. Determine the path to the original file's directory
             input_dir = os.path.dirname(file_path)
             output_dir = os.path.join(input_dir, "Output") 

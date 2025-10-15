@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 
-terminal_feedback = True  # Set to True to enable terminal feedback 
+terminal_feedback = False  # Set to True to enable terminal feedback 
 
 
 # --- LM Studio Configuration ---
