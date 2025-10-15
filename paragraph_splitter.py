@@ -13,9 +13,9 @@ PATENT_ID_REGEX = r'''
     |
     (U\.?S\.?\s?\d{2}\/\d+(\s?[A-Z])?)                   # Old US application format. 13/123456 A
     |
-    (U\.?S\.?\s?[0-9,]{7,}(\s?[A-Z]\d?)?)                   # Old US  format
+    (U\.?S\.?\s?[0-9,]{7,}(\s?[A-Z]\d?)?)                   # Old US  format.  US 6,123,456 B2
     |
-    (U\.?S\.?[\s-]?[A-Z]{0,2}\s?\d{4}[-\/]?\d+(\s?[A-Z]\d?)?) # New US format
+    (U\.?S\.?[\s-]?[A-Z]{0,2}\s?\d{4}\s?[-\/]?\s?[\d\s]+(\s?[A-Z]\d?)?) # New US format.  US 2020/1234567 A1
     |
     (JP[\s-]?[A-B]{0,1}\s?\d{4}[-\/]?\d+(\s?[A-Z]\d?)?) # New JP format
     |

@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 
-terminal_feedback = False  # Set to True to enable terminal feedback 
+terminal_feedback = True  # Set to True to enable terminal feedback 
 
 
 # --- LM Studio Configuration ---
@@ -45,6 +45,7 @@ YEAR_REGEX = re.compile(rf'\b({YEAR_PATTERN})(?!/)\b')
 # Genbank and biological database patterns
 GENBANK_REGEX = re.compile(r'\b(?:\bCAS\b|genbank|GenBank|Uniprot|Swissprot|PDB|RefSeq|NCBI|(GCA|GCF)_\d{9}\.\d+)')
 ASSEMBLY_ACCESSION_REGEX = re.compile(r'(GCA|GCF)_\d{9}\.\d+')
+CAS_ACCESSION_REGEX = re.compile(r'^\d{1,7}-\d{2}-\d$')
 
 # DOI pattern
 DOI_REGEX = re.compile(

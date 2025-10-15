@@ -204,6 +204,11 @@ def extract_paragraphs(file_path):
                                     if constants.terminal_feedback:
                                         print(f"  - Skipping invalid accession: type={repr(acc_type)}, id={repr(acc_id)}")
                                     continue
+
+                                if acc_type == "CAS" and not constants.CAS_ACCESSION_REGEX.match(acc_id):
+                                    if constants.terminal_feedback:
+                                        print(f"  - Skipping invalid CAS format: {acc_id}")
+                                    continue
                                 
                                 accessions_to_add.append(acc)
 
