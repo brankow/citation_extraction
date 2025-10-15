@@ -196,8 +196,10 @@ def correct_npl_mistakes(reference):
     2. Corrects improperly formatted DOI URLs (e.g., DOI:10... to https://doi.org/10...).
     3. Completes bare DOI strings (e.g., 10.1016/... to https://doi.org/10.1016/...).
     4. Cleans any remaining URL by splitting on unallowed characters.**
-    5. NEW: Clears title if it contains the single author's name.**
+    5. Clears title if it contains the single author's name.**
     6. Standardizes publication date to ddmmyyyy format.
+    7. Remove the Publisher if the length is less than 4 characters
+    8. Remove the Title if the length is less than 4 characters
     """
     corrected = False
 
@@ -309,5 +311,23 @@ def correct_npl_mistakes(reference):
         else:
             # Print a comment if transformation failed
             print(f"  ! WARNING: Date '{original_date}' could not be transformed to ddmmyyyy and was left as is.")
+
+    # --- Heuristic 7: Remove Publisher if too short ---
+    publisher_raw = reference.get("publisher")
+    publisher = publisher_raw.strip() if publisher_raw is not None else ""
+    if publisher and len(publisher) < 4:
+        reference["publisher"] = ""
+        corrected = True
+        if constants.terminal_feedback:
+            print(f"  ~ CORRECTION: Removed short publisher ('{publisher}').")
+
+    # --- Heuristic 8: Remove Title if too short ---
+    title_raw = reference.get("title")
+    title = title_raw.strip() if title_raw is not None else ""
+    if title and len(title) < 4:
+        reference["title"] = ""
+        corrected = True
+        if constants.terminal_feedback:
+            print(f"  ~ CORRECTION: Removed short title ('{title}').")  
 
     return corrected

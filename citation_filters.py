@@ -63,6 +63,17 @@ def should_skip_npl_reference(ref: dict) -> bool:
     )
 
     # --- FILTERING LOGIC ---
+
+    # Condition 12: Filter out Publisher only publications
+    if publisher_has_content and not author_has_content and not date_has_content and not volume_has_content and not pages_has_content and not url_has_content and not title_has_content and not author_has_content:
+        if constants.terminal_feedback:
+            print(f"  - Skipping NPL reference (Condition 12: Publisher Only filter): {publisher}")
+        return True # Skip this reference   
+    # Condition 11 : Filter out Author only publications
+    if not publisher_has_content and not date_has_content and not volume_has_content and not pages_has_content and not url_has_content and not title_has_content:
+        if constants.terminal_feedback:
+            print(f"  - Skipping NPL reference (Condition 11: Author Only filter): {author}")
+        return True # Skip this reference
      # Condition 10: Filter out Genes.      
     if publisher_has_content:
         if constants.ASSEMBLY_ACCESSION_REGEX.search(publisher):

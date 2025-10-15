@@ -209,6 +209,16 @@ def extract_paragraphs(file_path):
                                     if constants.terminal_feedback:
                                         print(f"  - Skipping invalid CAS format: {acc_id}")
                                     continue
+
+                                if acc_type == "PDB" and not constants.PDB_ACCESSION_REGEX.match(acc_id):
+                                    if constants.terminal_feedback:
+                                        print(f"  - Skipping invalid PDB format: {acc_id}")
+                                    continue
+
+                                if acc_type == "PSDB" and (acc_id == "PSDB" or acc_id == "None" or acc_id == "null" or len(acc_id) < 4):
+                                    if constants.terminal_feedback:
+                                        print(f"  - Skipping invalid PSDB format: {acc_id}")
+                                    continue
                                 
                                 accessions_to_add.append(acc)
 

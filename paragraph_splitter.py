@@ -28,6 +28,8 @@ PATENT_ID_REGEX = r'''
     \bDE\s?[\d\s]{7,}(?:\s?[A-Z]\d?)?\b                     # DE Number format DE19629787A1
     |
     (GB[\s-]?[A-Z]{0,1}\s?[0-9\-]{6,}(\s?[A-Z]\d?)?x)
+    |
+    \b(?:Application|Publication)\s+(?:No\.?|Nr\.?|N°)\s*[\d.,/-]+
 ''' 
 
 # 2. Build the Global SPLIT Pattern (for splitting and mid-string substitution)
