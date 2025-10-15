@@ -5,7 +5,7 @@ from typing import List, Callable, Tuple
 
 # 1. Define the core patent ID matching logic ONCE
 PATENT_ID_REGEX = r'''
-    (WO\s?\d{2,4}\s?\/\s?\d+\s?\d*\s?[A-Z0-9]{1,2}?)   # WO patents.   WO 2023 / 069 440 A1
+    (WO\s?\d{2,4}\s?\/?\s?\d+\s?\d*\s?[A-Z0-9]{1,2}?)   # WO patents.   WO 2023 / 069 440 A1.  WO 2016 066651
     |
     (PCT\/[A-Z]{2}\d{2,4}\/\d{3,7})       # PCT/EP2025/056529
     |
@@ -23,7 +23,9 @@ PATENT_ID_REGEX = r'''
     |
     (CN\d{6,}(\s?[A-Z]\d?)?)
     |
-    \bDE\s?\d{2}\s?\d{4}\s?\d{3}\s?\d{3}(?:\.\d)?(?:\s?[A-Z]\d?)?\b                     # DE Number format. DE 10 2019 135 544 A1
+    \bDE\s?\d{2}\s?\d{4}\s?\d{3}\s?\d{3}(?:\.\d)?(?:\s?[A-Z]\d?)?\b                     # DE Number format. DE 10 2019 135 544 A1.  DE19629787A1
+    |    
+    \bDE\s?[\d\s]{7,}(?:\s?[A-Z]\d?)?\b                     # DE Number format DE19629787A1
     |
     (GB[\s-]?[A-Z]{0,1}\s?[0-9\-]{6,}(\s?[A-Z]\d?)?x)
 ''' 
