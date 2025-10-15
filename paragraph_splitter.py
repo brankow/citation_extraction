@@ -83,20 +83,14 @@ def substitute_patent_numbers(text: str) -> str:
 def split_paragraph_on_patent_number(text: str) -> List[str]:
     """
     Splits the text immediately BEFORE a patent reference and DISCARDS the patent
-    reference and any preceding separator/whitespace from the resulting segments.
+    reference. The text following the patent gets 'PATENT ' prepended to it.
     """
     parts = []
     last_index = 0
     
     for m in PATENT_FINDER_PATTERN.finditer(text):
-        
-        # 1. Determine the split point: It should be before the patent ID
-        # We search backward for the nearest meaningful separator (., ; or end of word)
-        
-        # Split point is the start of the patent match (m.start())
+        # 1. Get the part BEFORE the patent reference
         split_index = m.start()
-        
-        # Get the part BEFORE the patent reference
         part_before = text[last_index:split_index].strip()
         
         # Only add the part if it contains actual content
@@ -104,19 +98,21 @@ def split_paragraph_on_patent_number(text: str) -> List[str]:
             parts.append(part_before)
         
         # 2. Update last_index to the END of the entire match (m.end()).
-        # This is the critical step: it skips over the entire patent ID,
-        # effectively consuming and discarding it from the rest of the processing.
-        last_index = m.end() 
-        
+        # This skips over the entire patent ID
+        last_index = m.end()
+    
+    # Handle the remainder after the last patent (or all text if no patents found)
     remainder = text[last_index:].strip()
     if remainder:
-        parts.append(remainder)
-        
-    # The split might have created just one part if the patent was the very first thing
-    # or the only thing. We return the splits if multiple segments were created.
-    # Note: We rely on the rest of the cascading split logic to handle parts cleanly.
-        
-    return [p for p in parts if p] if len(parts) > 1 else [text]
+        # If we found at least one patent, prepend "PATENT " to the remainder
+        if parts:  # This means we split on at least one patent
+            parts.append("PATENT " + remainder)
+        else:
+            # No patents were found, just append the remainder as-is
+            parts.append(remainder)
+    
+    # Return the splits if multiple segments were created, otherwise return original
+    return parts if len(parts) > 1 else [text]
 
 def split_paragraph_on_dot_double_newline(text: str) -> List[str]:
     """Primary split: split on dot followed by two or more newlines (paragraph break)"""

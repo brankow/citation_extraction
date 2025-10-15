@@ -47,11 +47,17 @@ GENBANK_PRESENCE_REGEX = re.compile(
     r'(?i:GenBank|Uniprot|Swissprot|PDB|RefSeq|NCBI|G[CF]A_\d{9}\.\d+)'
 )
 CAS_PRESENCE_REGEX = re.compile(r'\bCAS\b')
+
 ASSEMBLY_ACCESSION_REGEX = re.compile(r'(GCA|GCF)_\d{9}\.\d+')
 CAS_ACCESSION_REGEX = re.compile(r'^\d{1,7}-\d{2}-\d$')
+PDB_ID_PATTERN_CORE = r'(?:[0-9][A-Za-z0-9]{3}|[0-9]{4}_[0-9]{4})'
 PDB_ACCESSION_REGEX = re.compile(
-    r'^(?:[0-9][A-Za-z0-9]{3}|[0-9]{4}_[0-9]{4})$',
+    r'^' + PDB_ID_PATTERN_CORE + r'$',
     re.IGNORECASE
+)
+PDB_PRESENCE_REGEX = re.compile(
+    r'(?=.*PDB)(?=.*' + PDB_ID_PATTERN_CORE + r').+',
+    re.IGNORECASE | re.DOTALL
 )
 REFSEQ_REGEX = re.compile(
     r'\b(?:N[MGRCWPZXP]_[0-9]{5,9}(?:\.[0-9]+)?)\b',

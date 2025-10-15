@@ -98,6 +98,7 @@ def extract_paragraphs(file_path):
                 # Filtering Condition 3: Contains "genbank" (case insensitive)
                 contains_genbank = bool(constants.GENBANK_PRESENCE_REGEX.search(current_text_to_process))
                 contains_cas = bool(constants.CAS_PRESENCE_REGEX.search(current_text_to_process))
+                contains_pdb = bool(constants.PDB_PRESENCE_REGEX.search(current_text_to_process))
 
                 # Filtering Condition 4: Contains doi link
 
@@ -111,7 +112,7 @@ def extract_paragraphs(file_path):
                 contains_standards = bool(_3gpp_standards) or bool(_ieee_standards)
 
                 # Process if AT LEAST ONE condition is met
-                if contains_year or contains_nplcit or contains_genbank or contains_cas or contains_doi or contains_volume or contains_standards:
+                if contains_year or contains_nplcit or contains_genbank or contains_cas or contains_pdb or contains_doi or contains_volume or contains_standards:
                     paragraphs_found += 1
                     
 
@@ -169,7 +170,7 @@ def extract_paragraphs(file_path):
                                 print("  • No NPL references found.")
                   
                     # --- Step 5b: Gene Accession ID Extraction ---
-                    if contains_genbank or contains_cas:
+                    if contains_genbank or contains_cas or contains_pdb:
                         if constants.terminal_feedback:
                             print(f"[{part_num}] Extracting accession IDs...")
                         
