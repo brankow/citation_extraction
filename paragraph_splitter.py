@@ -5,15 +5,15 @@ from typing import List, Callable, Tuple
 
 # 1. Define the core patent ID matching logic ONCE
 PATENT_ID_REGEX = r'''
-    (WO\s?\d{2,4}\/\d+[A-Z0-9]{1,2}?)   # WO patents
+    (WO\s?\d{2,4}\s?\/\s?\d+\s?\d*\s?[A-Z0-9]{1,2}?)   # WO patents.   WO 2023 / 069 440 A1
     |
     (PCT\/[A-Z]{2}\d{2,4}\/\d{3,7})       # PCT/EP2025/056529
     |
     (EP\s?\d+[\s-]?\d+[\s-]?\d+[A-Z0-9]{1,2}?) # EP patents
     |
-    (U\.?S\.?\s?\d{2}\/\d+(\s?[A-Z]\d?)?)                   # Old US application format
+    (U\.?S\.?\s?\d{2}\/\d+(\s?[A-Z])?)                   # Old US application format. 13/123456 A
     |
-    (U\.?S\.?\s?[0-9,]{7,}(\s?[A-Z]\d?)?)                   # Old US application format
+    (U\.?S\.?\s?[0-9,]{7,}(\s?[A-Z]\d?)?)                   # Old US  format
     |
     (U\.?S\.?[\s-]?[A-Z]{0,2}\s?\d{4}[-\/]?\d+(\s?[A-Z]\d?)?) # New US format
     |
@@ -22,6 +22,8 @@ PATENT_ID_REGEX = r'''
     (JP[\s-]?[A-B]{0,1}\s?[HS]\d{1,2}[-\/]?\d+(\s?[A-Z]\d?)?) # Old JP format
     |
     (CN\d{6,}(\s?[A-Z]\d?)?)
+    |
+    \bDE\s?\d{2}\s?\d{4}\s?\d{3}\s?\d{3}(?:\.\d)?(?:\s?[A-Z]\d?)?\b                     # DE Number format. DE 10 2019 135 544 A1
     |
     (GB[\s-]?[A-Z]{0,1}\s?[0-9\-]{6,}(\s?[A-Z]\d?)?x)
 ''' 
