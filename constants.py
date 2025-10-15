@@ -43,13 +43,33 @@ YEAR_PATTERN = '|'.join(years_list)
 YEAR_REGEX = re.compile(rf'\b({YEAR_PATTERN})(?!/)\b')
 
 # Genbank and biological database patterns
-GENBANK_REGEX = re.compile(r'\b(?:\bCAS\b|genbank|GenBank|Uniprot|Swissprot|PDB|RefSeq|NCBI|(GCA|GCF)_\d{9}\.\d+)')
+GENBANK_PRESENCE_REGEX = re.compile(
+    r'(?i:GenBank|Uniprot|Swissprot|PDB|RefSeq|NCBI|G[CF]A_\d{9}\.\d+)'
+)
+CAS_PRESENCE_REGEX = re.compile(r'\bCAS\b')
 ASSEMBLY_ACCESSION_REGEX = re.compile(r'(GCA|GCF)_\d{9}\.\d+')
 CAS_ACCESSION_REGEX = re.compile(r'^\d{1,7}-\d{2}-\d$')
 PDB_ACCESSION_REGEX = re.compile(
     r'^(?:[0-9][A-Za-z0-9]{3}|[0-9]{4}_[0-9]{4})$',
     re.IGNORECASE
 )
+REFSEQ_REGEX = re.compile(
+    r'\b(?:N[MGRCWPZXP]_[0-9]{5,9}(?:\.[0-9]+)?)\b',
+    re.IGNORECASE
+)
+GENBANK_REGEX = re.compile(
+    r'\b(?:'
+    r'(?:[A-Z]{1}\d{5})|'          # X12345
+    r'(?:[A-Z]{2}\d{6})|'          # AF123456
+    r'(?:[A-Z]{3}\d{5})|'          # AAA12345
+    r'(?:[A-Z]{4}\d{8})|'          # ABCD12345678
+    r'(?:[A-Z]{2}\d{9})|'          # BK123456789
+    r'(?:G[CF]A_\d{9}(?:\.\d+)?)'  # GCA_000123456.1
+    r')\b',
+    re.IGNORECASE
+)
+
+
 
 # DOI pattern
 DOI_REGEX = re.compile(

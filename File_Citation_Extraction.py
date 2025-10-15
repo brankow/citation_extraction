@@ -96,7 +96,8 @@ def extract_paragraphs(file_path):
                 contains_nplcit = citation_count > 0 
                 
                 # Filtering Condition 3: Contains "genbank" (case insensitive)
-                contains_genbank = bool(constants.GENBANK_REGEX.search(current_text_to_process))
+                contains_genbank = bool(constants.GENBANK_PRESENCE_REGEX.search(current_text_to_process))
+                contains_cas = bool(constants.CAS_PRESENCE_REGEX.search(current_text_to_process))
 
                 # Filtering Condition 4: Contains doi link
 
@@ -109,9 +110,8 @@ def extract_paragraphs(file_path):
                 
                 contains_standards = bool(_3gpp_standards) or bool(_ieee_standards)
 
-
                 # Process if AT LEAST ONE condition is met
-                if contains_year or contains_nplcit or contains_genbank or contains_doi or contains_volume or contains_standards:
+                if contains_year or contains_nplcit or contains_genbank or contains_cas or contains_doi or contains_volume or contains_standards:
                     paragraphs_found += 1
                     
 
@@ -169,7 +169,7 @@ def extract_paragraphs(file_path):
                                 print("  • No NPL references found.")
                   
                     # --- Step 5b: Gene Accession ID Extraction ---
-                    if contains_genbank:
+                    if contains_genbank or contains_cas:
                         if constants.terminal_feedback:
                             print(f"[{part_num}] Extracting accession IDs...")
                         
@@ -199,6 +199,14 @@ def extract_paragraphs(file_path):
                                 acc_id_raw = acc.get("id")
                                 acc_id = acc_id_raw.strip() if acc_id_raw is not None else ""
 
+                                # Corrections
+                                if constants.REFSEQ_REGEX.fullmatch(acc_id):
+                                    if constants.terminal_feedback:
+                                        print(f"  ~ CORRECTION: Changed accession type to 'RefSeq' for ID '{acc_id}'")
+                                    acc["type"] = "RefSeq"
+                                
+                                acc_type = acc.get("type", "").strip()
+
                                 # Filter out invalid accessions
                                 if not acc_type or acc_type.lower() == "none" or not acc_id:
                                     if constants.terminal_feedback:
@@ -218,6 +226,15 @@ def extract_paragraphs(file_path):
                                 if acc_type == "PSDB" and (acc_id == "PSDB" or acc_id == "None" or acc_id == "null" or len(acc_id) < 4):
                                     if constants.terminal_feedback:
                                         print(f"  - Skipping invalid PSDB format: {acc_id}")
+                                    continue
+                                if acc_type == "RefSeq" and not constants.REFSEQ_REGEX.match(acc_id):
+                                    if constants.terminal_feedback:
+                                        print(f"  - Skipping invalid RefSeq format: {acc_id}")
+                                    continue
+
+                                if acc_type == "GenBank" and not constants.GENBANK_REGEX.match(acc_id):
+                                    if constants.terminal_feedback:
+                                        print(f"  - Skipping invalid GenBank format: {acc_id}")
                                     continue
                                 
                                 accessions_to_add.append(acc)
