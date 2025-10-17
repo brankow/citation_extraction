@@ -90,8 +90,6 @@ def extract_paragraphs(file_path):
 
                 # Filtering Condition 2: Contains the literal tag <nplcit
                 # Since we stripped the text before splitting, we can't reliably check for the tag in the *part*.
-                # For safety, we'll keep the original simple count on the *whole* paragraph's raw_content_with_tags
-                # or rely on LLM extraction if the paragraph contains other citation indicators.
                 citation_count = raw_content_with_tags.count('<nplcit') 
                 contains_nplcit = citation_count > 0 
                 
@@ -302,8 +300,6 @@ def extract_paragraphs(file_path):
         print("Please ensure the selected file is a valid XML document.")
     except Exception as e:
         print(f"\nAn unexpected error occurred: {e}")
-        # Optionally re-raise if you need to debug
-        # raise 
 
 def main():
     """Main function to run the application flow."""
